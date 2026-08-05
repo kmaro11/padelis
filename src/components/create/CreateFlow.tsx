@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 
 import { createTournamentAction } from "@/app/actions/tournaments";
-import { Screen } from "@/components/layout/PhoneFrame";
+import { Screen } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SectionLabel } from "@/components/ui/SectionLabel";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Check, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 
 import { saveScoreAction } from "@/app/actions/tournaments";
@@ -14,13 +14,7 @@ import {
 } from "@/lib/tournament-view";
 import type { Match, Tournament } from "@/lib/types";
 
-export function MatchList({
-  tournament,
-  confirmBeforeSave,
-}: {
-  tournament: Tournament;
-  confirmBeforeSave: boolean;
-}) {
+export function MatchList({ tournament }: { tournament: Tournament }) {
   const rounds = useMemo(
     () => groupByRound(tournament.matches),
     [tournament.matches],
@@ -87,7 +81,6 @@ export function MatchList({
             editing={match.id === editingId}
             onEdit={() => setEditingId(match.id)}
             onCancelEdit={() => setEditingId(null)}
-            confirmBeforeSave={confirmBeforeSave}
           />
         ))}
       </div>
@@ -166,7 +159,6 @@ function MatchCard({
   editing,
   onEdit,
   onCancelEdit,
-  confirmBeforeSave,
 }: {
   tournament: Tournament;
   match: Match;
@@ -174,7 +166,6 @@ function MatchCard({
   editing: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
-  confirmBeforeSave: boolean;
 }) {
   const home = teamName(tournament.teams, match.homeTeamId);
   const away = teamName(tournament.teams, match.awayTeamId);
@@ -188,7 +179,6 @@ function MatchCard({
         number={number}
         home={home}
         away={away}
-        confirmBeforeSave={confirmBeforeSave}
         onDone={onCancelEdit}
         editing={editing}
       />
@@ -242,7 +232,6 @@ function ScoreEntryCard({
   number,
   home,
   away,
-  confirmBeforeSave,
   onDone,
   editing,
 }: {
@@ -251,7 +240,6 @@ function ScoreEntryCard({
   number: number;
   home: string;
   away: string;
-  confirmBeforeSave: boolean;
   onDone: () => void;
   editing: boolean;
 }) {
@@ -261,15 +249,16 @@ function ScoreEntryCard({
   const [awayScore, setAwayScore] = useState(
     match.score ? `${match.score.away}` : "",
   );
-  const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const awayRef = useRef<HTMLInputElement>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
+
   const valid = homeScore !== "" && awayScore !== "" && homeScore !== awayScore;
 
-  const commit = () => {
+  const save = () => {
     setError(null);
-    setConfirming(false);
     startTransition(async () => {
       try {
         await saveScoreAction(tournamentId, match.id, {
@@ -281,14 +270,6 @@ function ScoreEntryCard({
         setError("Nepavyko išsaugoti.");
       }
     });
-  };
-
-  const save = () => {
-    if (confirmBeforeSave && !confirming) {
-      setConfirming(true);
-      return;
-    }
-    commit();
   };
 
   return (
@@ -303,21 +284,26 @@ function ScoreEntryCard({
         ) : null}
       </header>
 
-      <ScoreInput name={home} value={homeScore} onChange={setHomeScore} />
+      <ScoreInput
+        name={home}
+        value={homeScore}
+        onChange={setHomeScore}
+        onFilled={() => awayRef.current?.focus()}
+      />
       <div className="my-3 h-px bg-hair" />
-      <ScoreInput name={away} value={awayScore} onChange={setAwayScore} />
+      <ScoreInput
+        ref={awayRef}
+        name={away}
+        value={awayScore}
+        onChange={setAwayScore}
+        onFilled={() => saveRef.current?.focus()}
+      />
 
       {error ? (
         <p className="mt-3 text-center text-sm text-red-600">{error}</p>
       ) : null}
 
-      {confirming ? (
-        <p className="mt-4 text-center text-xs-plus text-dim">
-          Save {home} {homeScore} – {awayScore} {away}?
-        </p>
-      ) : null}
-
-      {editing && !confirming ? (
+      {editing ? (
         <p className="mt-4 text-center text-xs text-dim text-pretty">
           Changing a Round Robin result reseeds the bracket, unless it has
           already started.
@@ -325,17 +311,18 @@ function ScoreEntryCard({
       ) : null}
 
       <div className="mt-2 flex gap-2">
-        {confirming || editing ? (
+        {editing ? (
           <button
             type="button"
-            onClick={() => (confirming ? setConfirming(false) : onDone())}
+            onClick={onDone}
             className="flex h-[46px] flex-1 items-center justify-center rounded-[14px] bg-fill text-base font-semibold text-ink"
           >
-            {confirming ? "Back" : "Cancel"}
+            Cancel
           </button>
         ) : null}
 
         <button
+          ref={saveRef}
           type="button"
           onClick={save}
           disabled={!valid || pending}
@@ -346,40 +333,53 @@ function ScoreEntryCard({
               : "bg-fill text-dim",
           )}
         >
-          {pending
-            ? "Saving…"
-            : confirming
-              ? "Confirm"
-              : editing
-                ? "Update result"
-                : "Save result"}
+          {pending ? "Saving…" : editing ? "Update result" : "Save result"}
         </button>
       </div>
     </article>
   );
 }
 
+/**
+ * Vienas skaitmuo, 0–6. Įvedus skaičių fokusas pats šoka toliau, o naujas
+ * paspaudimas perrašo esamą reikšmę — taip taisyti greičiau nei trinti.
+ */
 function ScoreInput({
+  ref,
   name,
   value,
   onChange,
+  onFilled,
 }: {
+  ref?: React.Ref<HTMLInputElement>;
   name: string;
   value: string;
   onChange: (value: string) => void;
+  onFilled: () => void;
 }) {
+  const handle = (raw: string) => {
+    const digits = raw.replace(/[^0-6]/g, "");
+    if (digits === "") {
+      onChange("");
+      return;
+    }
+
+    onChange(digits.slice(-1));
+    onFilled();
+  };
+
   return (
     <label className="flex items-center gap-3">
       <span className="flex-1 text-md font-semibold tracking-snug">{name}</span>
       <input
+        ref={ref}
         inputMode="numeric"
-        pattern="[0-9]*"
+        pattern="[0-6]"
         maxLength={2}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value.replace(/\D/g, "").slice(0, 2))
-        }
-        aria-label={`${name} score`}
+        onChange={(event) => handle(event.target.value)}
+        onFocus={(event) => event.currentTarget.select()}
+        aria-label={`${name} score, 0 to 6`}
         className={cn(
           "h-14 w-[58px] shrink-0 rounded-badge text-center text-4xl font-bold outline-none transition-colors duration-150 ease-ios",
           value === ""

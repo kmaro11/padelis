@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Screen } from "@/components/layout/PhoneFrame";
+import { Screen } from "@/components/layout/AppShell";
 import { DeleteTournament } from "@/components/tournament/DeleteTournament";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";

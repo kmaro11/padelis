@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { Screen } from "@/components/layout/PhoneFrame";
+import { Screen } from "@/components/layout/AppShell";
 import { BackLink } from "@/components/tournament/BackLink";
 import { TeamList } from "@/components/tournament/TeamList";
 import { getTournament } from "@/db/queries";

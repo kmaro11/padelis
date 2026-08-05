@@ -7,7 +7,7 @@ import {
   deleteAllDataAction,
   updateSettingsAction,
 } from "@/app/actions/tournaments";
-import { Screen } from "@/components/layout/PhoneFrame";
+import { Screen } from "@/components/layout/AppShell";
 import { ScreenTitle } from "@/components/ui/SectionLabel";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/components/ui/cn";
@@ -63,13 +63,6 @@ export function SettingsScreen({ initial }: { initial: Settings }) {
         </SettingsGroup>
 
         <SettingsGroup>
-          <SettingsRow label="Confirm before saving score">
-            <Switch
-              label="Confirm before saving score"
-              checked={settings.confirmBeforeSave}
-              onChange={(value) => patch({ confirmBeforeSave: value })}
-            />
-          </SettingsRow>
           <SettingsRow label="Haptics">
             <Switch
               label="Haptics"

@@ -1,5 +1,5 @@
-import { PhoneFrame } from "@/components/layout/PhoneFrame";
+import { AppShell } from "@/components/layout/AppShell";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
-  return <PhoneFrame>{children}</PhoneFrame>;
+  return <AppShell>{children}</AppShell>;
 }

@@ -1,6 +1,6 @@
-import { PhoneFrame } from "@/components/layout/PhoneFrame";
+import { AppShell } from "@/components/layout/AppShell";
 
 /** Pilno ekrano srautai — be apatinės navigacijos. */
 export default function FlowLayout({ children }: LayoutProps<"/">) {
-  return <PhoneFrame nav={false}>{children}</PhoneFrame>;
+  return <AppShell nav={false}>{children}</AppShell>;
 }

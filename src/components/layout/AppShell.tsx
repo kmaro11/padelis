@@ -4,13 +4,13 @@ import { cn } from "../ui/cn";
 import { FloatingNav } from "./FloatingNav";
 
 /**
- * 390px mobile canvas from the handoff. On larger viewports the same layout
- * scales up to a 560px centred column instead of switching to a desktop grid.
+ * Mobile-first turinio stulpelis. Handoff'as pieštas 390px pločiu, o
+ * platesniuose ekranuose tas pats išdėstymas centruojamas iki 560px —
+ * jokio telefono kadro, tik skaitomo pločio riba.
  *
- * `nav={false}` — pilno ekrano srautams (create flow), kur apatinė
- * navigacija tik trukdytų.
+ * `nav={false}` — pilno ekrano srautams (create flow).
  */
-export function PhoneFrame({
+export function AppShell({
   children,
   nav = true,
 }: {
@@ -18,16 +18,14 @@ export function PhoneFrame({
   nav?: boolean;
 }) {
   return (
-    <div className="flex min-h-dvh justify-center sm:items-center sm:py-10">
-      <div className="relative flex h-dvh w-full max-w-frame flex-col overflow-hidden bg-white pt-[env(safe-area-inset-top)] sm:h-frame-h sm:rounded-frame sm:shadow-frame lg:max-w-desktop">
-        {children}
-        {nav ? <FloatingNav /> : null}
-      </div>
+    <div className="relative mx-auto flex h-dvh w-full max-w-desktop flex-col overflow-hidden bg-white pt-[env(safe-area-inset-top)]">
+      {children}
+      {nav ? <FloatingNav /> : null}
     </div>
   );
 }
 
-/** Scrollable content area above the pill nav. */
+/** Slenkama turinio sritis. */
 export function Screen({
   children,
   tone = "white",
@@ -36,7 +34,7 @@ export function Screen({
   children: ReactNode;
   /** Settings ekrane fonas pilkas, o kortelės baltos — kaip iOS nustatymuose. */
   tone?: "white" | "grouped";
-  /** false — kai kadre nėra plaukiojančios navigacijos. */
+  /** false — kai nėra plaukiojančios navigacijos. */
   nav?: boolean;
 }) {
   return (

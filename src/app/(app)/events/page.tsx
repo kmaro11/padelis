@@ -1,4 +1,4 @@
-import { Screen } from "@/components/layout/PhoneFrame";
+import { Screen } from "@/components/layout/AppShell";
 import { TournamentGroups } from "@/components/tournament/TournamentGroups";
 import { Fab } from "@/components/ui/Fab";
 import { ScreenTitle } from "@/components/ui/SectionLabel";

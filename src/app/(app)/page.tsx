@@ -1,6 +1,6 @@
 import { Diamond } from "lucide-react";
 
-import { Screen } from "@/components/layout/PhoneFrame";
+import { Screen } from "@/components/layout/AppShell";
 import { TodayLabel } from "@/components/layout/TodayLabel";
 import { LiveTournamentCard } from "@/components/tournament/LiveTournamentCard";
 import { RecentTournamentRow } from "@/components/tournament/RecentTournamentRow";

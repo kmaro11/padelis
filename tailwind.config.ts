@@ -27,7 +27,6 @@ const config: Config = {
         "on-ink": "rgba(255,255,255,.55)",
         "on-ink-dim": "rgba(255,255,255,.5)",
         "on-ink-track": "rgba(255,255,255,.16)",
-        canvas: "#e9e7e3",
         surface: "#f7f6f4",
       },
       fontFamily: {
@@ -88,8 +87,6 @@ const config: Config = {
         fab: "0 12px 26px rgba(180,144,88,.42)",
       },
       spacing: {
-        frame: "390px",
-        "frame-h": "844px",
         desktop: "560px",
         nav: "100px",
         tab: "44px",

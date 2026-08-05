@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Trophy } from "lucide-react";
 
-import { Screen } from "@/components/layout/PhoneFrame";
+import { Screen } from "@/components/layout/AppShell";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ScreenTitle } from "@/components/ui/SectionLabel";
