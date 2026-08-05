@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { Screen } from "@/components/layout/AppShell";
 import { BackLink } from "@/components/tournament/BackLink";
+import { FinalPlacings } from "@/components/tournament/FinalPlacings";
 import { cn } from "@/components/ui/cn";
 import { getTournament } from "@/db/queries";
 import {
@@ -33,6 +34,10 @@ export default async function StandingsPage({
   /** Final Four atveja pirmi keturi patenka į bracket'ą — brūkšnys po jų. */
   const cutoff = tournament.format === "final-four" ? 4 : null;
 
+  const hasKnockout = tournament.matches.some(
+    (match) => match.stage !== "round-robin",
+  );
+
   return (
     <Screen>
       <BackLink href={`/tournament/${id}`}>Tournament</BackLink>
@@ -47,6 +52,14 @@ export default async function StandingsPage({
             : `Updated after match ${roundRobin.played} · live`}
         </p>
       </header>
+
+      {hasKnockout ? <FinalPlacings tournament={tournament} /> : null}
+
+      {hasKnockout ? (
+        <p className="text-[10.5px] font-semibold uppercase tracking-badge text-dim">
+          Round Robin table
+        </p>
+      ) : null}
 
       <div
         className={cn(

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { Screen } from "@/components/layout/AppShell";
 import { BackLink } from "@/components/tournament/BackLink";
+import { FinalPlacings } from "@/components/tournament/FinalPlacings";
 import { cn } from "@/components/ui/cn";
 import { getTournament } from "@/db/queries";
 import { computeStandings } from "@/lib/standings";
@@ -119,6 +120,8 @@ export default async function BracketPage({
           ))}
         </section>
       ) : null}
+
+      {semis.length > 0 ? <FinalPlacings tournament={tournament} /> : null}
 
       {unpaired ? (
         <section className="flex flex-col gap-2.5">

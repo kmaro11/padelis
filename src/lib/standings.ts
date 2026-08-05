@@ -185,6 +185,110 @@ export function tieBreakNote(
   return null;
 }
 
+export interface FinalPlacing {
+  position: number;
+  team: Team;
+  /** kas nulėmė vietą */
+  decidedBy: "final" | "third-place" | "placement" | "round-robin";
+  /** true, kol lemiamos rungtynės dar nesužaistos */
+  provisional: boolean;
+}
+
+/**
+ * Galutinė klasifikacija. Round Robin lentelė duoda sėjimą, o atkrintamosios
+ * ją perrašo: finalas sprendžia 1–2, trečios vietos rungtynės 3–4, o kiekvienos
+ * placement rungtynės — dvi vietas nuo aukštesnio dalyvio RR pozicijos.
+ */
+export function computeFinalPlacings(
+  teams: Team[],
+  matches: Match[],
+): { placings: FinalPlacing[]; complete: boolean } {
+  const table = computeStandings(teams, matches);
+  const rrPosition = new Map(table.map((row) => [row.team.id, row.position]));
+  const knockout = matches.filter((match) => match.stage !== "round-robin");
+
+  if (knockout.length === 0) {
+    return {
+      placings: table.map((row) => ({
+        position: row.position,
+        team: row.team,
+        decidedBy: "round-robin" as const,
+        provisional: !roundRobinComplete(matches),
+      })),
+      complete: roundRobinComplete(matches),
+    };
+  }
+
+  const byTeam = new Map<string, FinalPlacing>();
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+
+  for (const match of knockout) {
+    const home = match.homeTeamId;
+    const away = match.awayTeamId;
+    if (!home || !away) continue;
+
+    const base =
+      match.stage === "final"
+        ? 1
+        : match.stage === "third-place"
+          ? 3
+          : Math.min(rrPosition.get(home) ?? 99, rrPosition.get(away) ?? 99);
+
+    const decidedBy =
+      match.stage === "final"
+        ? ("final" as const)
+        : match.stage === "third-place"
+          ? ("third-place" as const)
+          : ("placement" as const);
+
+    const winner = winnerId(match);
+    const loser = loserId(match);
+
+    if (winner && loser) {
+      assign(byTeam, teamById, winner, base, decidedBy, false);
+      assign(byTeam, teamById, loser, base + 1, decidedBy, false);
+    } else {
+      // dar nesužaista — laikinai pagal RR sėjimą
+      const [high, low] =
+        (rrPosition.get(home) ?? 99) <= (rrPosition.get(away) ?? 99)
+          ? [home, away]
+          : [away, home];
+      assign(byTeam, teamById, high, base, decidedBy, true);
+      assign(byTeam, teamById, low, base + 1, decidedBy, true);
+    }
+  }
+
+  // komandos be poros išlaiko Round Robin vietą
+  for (const row of table) {
+    if (byTeam.has(row.team.id)) continue;
+    byTeam.set(row.team.id, {
+      position: row.position,
+      team: row.team,
+      decidedBy: "round-robin",
+      provisional: false,
+    });
+  }
+
+  const placings = [...byTeam.values()].sort(
+    (a, b) => a.position - b.position,
+  );
+
+  return { placings, complete: knockout.every(isPlayed) };
+}
+
+function assign(
+  target: Map<string, FinalPlacing>,
+  teams: Map<string, Team>,
+  teamId: string,
+  position: number,
+  decidedBy: FinalPlacing["decidedBy"],
+  provisional: boolean,
+): void {
+  const team = teams.get(teamId);
+  if (!team) return;
+  target.set(teamId, { position, team, decidedBy, provisional });
+}
+
 export function roundRobinComplete(matches: Match[]): boolean {
   const roundRobin = matches.filter((match) => match.stage === "round-robin");
   return roundRobin.length > 0 && roundRobin.every(isPlayed);
