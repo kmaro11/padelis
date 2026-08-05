@@ -84,9 +84,12 @@ function phaseNote(
     : `${stage.replace("the ", "")} in progress — ${total - played} to play.`;
 }
 
+export type Phase = "round-robin" | "knockout";
+
 export interface RoundGroup {
   round: number;
   label: string;
+  phase: Phase;
   matches: Match[];
   played: number;
   /** true, kai visos raundo rungtynės turi rezultatą */
@@ -113,6 +116,7 @@ export function groupByRound(matches: Match[]): RoundGroup[] {
 
   return rounds.map(([round, group]) => {
     const stages = new Set(group.map((match) => match.stage));
+    const phase: Phase = stages.has("round-robin") ? "round-robin" : "knockout";
     let label: string;
 
     if (stages.has("round-robin")) {
@@ -131,6 +135,7 @@ export function groupByRound(matches: Match[]): RoundGroup[] {
     return {
       round,
       label,
+      phase,
       matches: group,
       played,
       complete: played === group.length,

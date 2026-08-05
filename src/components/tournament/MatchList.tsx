@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useMemo, useRef, useState, useTransition } from "react";
 import { Check, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 
 import { saveScoreAction } from "@/app/actions/tournaments";
@@ -11,6 +11,7 @@ import {
   groupByRound,
   matchNumbers,
   teamName,
+  type RoundGroup,
 } from "@/lib/tournament-view";
 import type { Match, Tournament } from "@/lib/types";
 
@@ -51,7 +52,17 @@ export function MatchList({ tournament }: { tournament: Tournament }) {
         />
 
         <div className="text-center">
-          <p className="text-md font-semibold tracking-snug">{group.label}</p>
+          <p
+            className={cn(
+              "text-[10.5px] font-semibold uppercase tracking-badge",
+              group.phase === "knockout" ? "text-gold" : "text-dim",
+            )}
+          >
+            {group.phase === "knockout" ? "Knockout" : "Round Robin"}
+          </p>
+          <p className="mt-1 text-md font-semibold tracking-snug">
+            {group.label}
+          </p>
           <p className="mt-0.5 text-xs text-dim">
             {group.complete
               ? "All results in"
@@ -69,7 +80,19 @@ export function MatchList({ tournament }: { tournament: Tournament }) {
         />
       </div>
 
-      <RoundDots count={rounds.length} active={index} />
+      <RoundDots rounds={rounds} active={index} />
+
+      {group.phase === "knockout" &&
+      rounds[index - 1]?.phase === "round-robin" ? (
+        <p className="rounded-tile bg-gold-soft px-4 py-3 text-center text-xs-plus text-pretty">
+          <span className="font-semibold text-gold">
+            Round Robin is finished.
+          </span>{" "}
+          <span className="text-dim">
+            Everything below is seeded from the final standings.
+          </span>
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-3">
         {group.matches.map((match) => (
@@ -101,7 +124,9 @@ export function MatchList({ tournament }: { tournament: Tournament }) {
           )}
         >
           {group.complete
-            ? `Next round · ${rounds[index + 1].label}`
+            ? rounds[index + 1].phase !== group.phase
+              ? `Start knockout · ${rounds[index + 1].label}`
+              : `Next round · ${rounds[index + 1].label}`
             : `${remaining} result${remaining === 1 ? "" : "s"} left`}
         </button>
       ) : null}
@@ -136,17 +161,30 @@ function RoundArrow({
   );
 }
 
-function RoundDots({ count, active }: { count: number; active: number }) {
+/** Tarpas tarp taškučių žymi perėjimą iš Round Robin į atkrintamąsias. */
+function RoundDots({
+  rounds,
+  active,
+}: {
+  rounds: RoundGroup[];
+  active: number;
+}) {
   return (
-    <div className="flex justify-center gap-1.5">
-      {Array.from({ length: count }, (_, index) => (
-        <span
-          key={index}
-          className={cn(
-            "h-1.5 rounded-full transition-all duration-200 ease-ios",
-            index === active ? "w-5 bg-gold" : "w-1.5 bg-hair",
-          )}
-        />
+    <div className="flex items-center justify-center gap-1.5">
+      {rounds.map((group, index) => (
+        <Fragment key={group.round}>
+          {index > 0 && group.phase !== rounds[index - 1].phase ? (
+            <span aria-hidden className="mx-1.5 h-3 w-px bg-hair" />
+          ) : null}
+          <span
+            className={cn(
+              "h-1.5 rounded-full transition-all duration-200 ease-ios",
+              index === active
+                ? cn("w-5", group.phase === "knockout" ? "bg-gold" : "bg-ink")
+                : "w-1.5 bg-hair",
+            )}
+          />
+        </Fragment>
       ))}
     </div>
   );
