@@ -90,7 +90,11 @@ export function generatePlacementMatches(tournament: Tournament): Match[] {
 
 /**
  * Final Four: semis are 1v4 and 2v3, winners meet in the final,
- * losers play for third. Teams ranked 5th+ keep their Round Robin rank.
+ * losers play for third.
+ *
+ * Likusios komandos nesėdi be darbo — 5v6, 7v8 ir taip toliau žaidžia dėl
+ * savo vietų tuo pačiu raundu. Nelyginiu atveju paskutinė komanda poros
+ * neturi ir išlaiko Round Robin vietą.
  */
 export function generateFinalFourMatches(tournament: Tournament): Match[] {
   if (!roundRobinComplete(tournament.matches)) return [];
@@ -100,6 +104,23 @@ export function generateFinalFourMatches(tournament: Tournament): Match[] {
 
   const round = maxRound(tournament.matches) + 1;
   const [first, second, third, fourth] = standings;
+
+  const placings: Match[] = [];
+  for (let index = 4; index + 1 < standings.length; index += 2) {
+    const high = standings[index];
+    const low = standings[index + 1];
+
+    placings.push({
+      id: nextId("match"),
+      round,
+      stage: "placement",
+      homeTeamId: high.team.id,
+      awayTeamId: low.team.id,
+      score: null,
+      label: `${ordinal(high.position)} place`,
+      court: (((index - 4) / 2) % tournament.courts) + 1,
+    });
+  }
 
   return [
     {
@@ -142,6 +163,7 @@ export function generateFinalFourMatches(tournament: Tournament): Match[] {
       label: "Final",
       court: Math.min(2, tournament.courts),
     },
+    ...placings,
   ];
 }
 

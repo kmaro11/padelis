@@ -6,7 +6,7 @@ import { cn } from "@/components/ui/cn";
 import { getTournament } from "@/db/queries";
 import { computeStandings } from "@/lib/standings";
 import { teamName } from "@/lib/tournament-view";
-import type { Match, StandingRow, Tournament } from "@/lib/types";
+import type { Match, Tournament } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +25,22 @@ export default async function BracketPage({
   const third = tournament.matches.find(
     (match) => match.stage === "third-place",
   );
+
+  const placings = tournament.matches.filter(
+    (match) => match.stage === "placement",
+  );
+
+  const inPlacings = new Set(
+    placings.flatMap((match) => [match.homeTeamId, match.awayTeamId]),
+  );
+
+  /** Nelyginis komandų skaičius — paskutinė pora neturi. */
+  const unpaired =
+    semis.length > 0
+      ? (rows
+          .slice(4)
+          .find((row) => !inPlacings.has(row.team.id)) ?? null)
+      : null;
 
   const seedOf = new Map(rows.map((row) => [row.team.id, row.position]));
 
@@ -88,26 +104,33 @@ export default async function BracketPage({
         </>
       )}
 
-      {rows.length > 4 ? (
+      {placings.length > 0 ? (
         <section className="flex flex-col gap-2.5">
-          <SectionCaption>Remaining teams</SectionCaption>
-          <div className="flex flex-col">
-            {rows.slice(4).map((row: StandingRow) => (
-              <div
-                key={row.team.id}
-                className="flex items-center gap-3 border-b border-hair py-3"
-              >
-                <span className="w-5 text-sm font-bold text-dim">
-                  {row.position}
-                </span>
-                <span className="flex-1 text-base font-medium">
-                  {row.team.name}
-                </span>
-                <span className="text-xs text-dim">
-                  {row.wins}–{row.losses}
-                </span>
-              </div>
-            ))}
+          <SectionCaption>Placement matches</SectionCaption>
+          {placings.map((match) => (
+            <div key={match.id} className="flex flex-col gap-1.5">
+              <p className="text-xs text-dim">{match.label}</p>
+              <BracketCard
+                tournament={tournament}
+                match={match}
+                seedOf={seedOf}
+              />
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {unpaired ? (
+        <section className="flex flex-col gap-2.5">
+          <SectionCaption>No opponent left</SectionCaption>
+          <div className="flex items-center gap-3 rounded-tile bg-fill px-4 py-3">
+            <span className="w-5 text-sm font-bold text-dim">
+              {unpaired.position}
+            </span>
+            <span className="flex-1 text-base font-medium">
+              {unpaired.team.name}
+            </span>
+            <span className="text-xs text-dim">keeps Round Robin rank</span>
           </div>
         </section>
       ) : null}

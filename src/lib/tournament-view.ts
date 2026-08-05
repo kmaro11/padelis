@@ -119,7 +119,7 @@ export function groupByRound(matches: Match[]): RoundGroup[] {
       roundRobinIndex += 1;
       label = `Round ${roundRobinIndex}`;
     } else if (stages.has("semifinal")) {
-      label = "Semifinals";
+      label = stages.has("placement") ? "Semifinals & placings" : "Semifinals";
     } else if (stages.has("final") || stages.has("third-place")) {
       label = "Final";
     } else {
