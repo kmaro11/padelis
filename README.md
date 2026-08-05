@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Padel Tournament App
 
-## Getting Started
+Mobile-first admin app for a single organizer: create a tournament, enter
+scores, get automatic standings and bracket. No player accounts, no auth.
 
-First, run the development server:
+Next.js 16 (App Router) · TypeScript · Tailwind v4 · Supabase Postgres · Drizzle ORM
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Aplinkos kintamieji
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Reikia dviejų Postgres prisijungimo eilučių:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Paskirtis | Kintamasis (pirmas rastas laimi) |
+| --- | --- |
+| App'o užklausos (pooled, 6543) | `DATABASE_URL`, `padelis_POSTGRES_URL`, `POSTGRES_URL` |
+| Migracijos / DDL (tiesioginis, 5432) | `DIRECT_URL`, `padelis_POSTGRES_URL_NON_POOLING`, `POSTGRES_URL_NON_POOLING` |
 
-## Learn More
+Vercel ↔ Supabase integracija juos sukuria automatiškai su projekto
+prefiksu (`padelis_...`), tad papildomai nieko rašyti nereikia. Paieškos
+tvarka — `src/db/env.ts`.
 
-To learn more about Next.js, take a look at the following resources:
+DDL per transaction pooler nepatikimas, todėl `drizzle.config.ts` naudoja
+tiesioginį ryšį, o app'as — pooled.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Supabase API raktų (`NEXT_PUBLIC_..._SUPABASE_URL`, anon / publishable)
+šitam variantui nereikia — visos užklausos vyksta serveryje per Drizzle,
+naršyklė DB nemato. Jie prireiks tik įjungus Supabase Auth ar Realtime.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Migracijos
 
-## Deploy on Vercel
+```bash
+pnpm db:generate   # schema.ts pakeitimai -> naujas SQL failas
+pnpm db:migrate    # paleisti migracijas Supabase'e
+pnpm db:studio     # Drizzle Studio
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Migracijos guli `supabase/migrations/`. `0001_triggers_and_rls.sql` įjungia
+RLS be politikų ir atima teises iš `anon` / `authenticated` rolių — tai
+uždaro automatinį Supabase PostgREST API. Drizzle jungiasi `postgres` role,
+kuri RLS apeina.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Struktūra
+
+```
+src/
+  app/
+    (app)/            ekranai (Home, Events, ...) + PhoneFrame layout
+    actions/          Server Actions (rašymas į DB)
+  components/
+    layout/           PhoneFrame, FloatingNav
+    ui/               Button, Chip, DateBadge, ProgressBar, ...
+    tournament/       turnyrų kortelės ir sąrašo elementai
+  db/
+    schema.ts         Drizzle schema (vienintelis schemos šaltinis)
+    queries.ts        server-only užklausos
+    mappers.ts        DB eilutės -> domain tipai
+  lib/
+    types.ts          domain tipai
+    schedule.ts       Round Robin, Placement, Final Four generavimas
+    standings.ts      reitingavimo taisyklės
+tailwind.config.ts    design tokenai iš handoff'o
+```
+
+## Reitingavimo taisyklės
+
+1. Pergalės
+2. Tarpusavio (head-to-head) taškai **tik tarp susilyginusių komandų**
+3. Bendri pelnyti taškai turnyre
+
+Standings perskaičiuojami kiekvieną kartą išsaugojus rezultatą.

@@ -1,5 +1,3 @@
-"use client";
-
 import { Diamond } from "lucide-react";
 
 import { Screen } from "@/components/layout/PhoneFrame";
@@ -10,13 +8,14 @@ import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ScreenTitle, SubheadTitle } from "@/components/ui/SectionLabel";
 import { StatRow } from "@/components/ui/StatTile";
-import { useTournaments } from "@/lib/tournament-store";
+import { getOverview } from "@/db/queries";
 
-export default function HomePage() {
-  const { tournaments, upcoming, past, live, stats } = useTournaments();
-  const highlighted = live ?? upcoming[0] ?? null;
+export const dynamic = "force-dynamic";
 
-  if (tournaments.length === 0) {
+export default async function HomePage() {
+  const { highlighted, past, stats } = await getOverview();
+
+  if (stats.tournaments === 0) {
     return (
       <Screen>
         <ScreenTitle>Home</ScreenTitle>
@@ -54,7 +53,7 @@ export default function HomePage() {
       />
 
       {past.length > 0 ? (
-        <section className="pb-6">
+        <section>
           <SubheadTitle>Recent</SubheadTitle>
           <div className="flex flex-col">
             {past.slice(0, 3).map((tournament) => (
