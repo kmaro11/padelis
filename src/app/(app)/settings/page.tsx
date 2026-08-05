@@ -1,13 +1,9 @@
-import { Settings } from "lucide-react";
+import { SettingsScreen } from "@/components/settings/SettingsScreen";
+import { getSettings } from "@/db/queries";
 
-import { ComingNext } from "@/components/ui/ComingNext";
+export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
-  return (
-    <ComingNext
-      title="Settings"
-      icon={Settings}
-      description="Defaults, switches and data management live here."
-    />
-  );
+export default async function SettingsPage() {
+  const settings = await getSettings();
+  return <SettingsScreen initial={settings} />;
 }

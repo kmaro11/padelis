@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   index,
@@ -136,6 +137,36 @@ export const matches = pgTable(
   ],
 );
 
+/**
+ * Organizatoriaus nustatymai. Vartotojų nėra, tad lentelėje visada
+ * tik viena eilutė — `id` prirakintas prie 1.
+ */
+export const settings = pgTable(
+  "settings",
+  {
+    id: smallint("id").primaryKey().default(1),
+    defaultFormat: tournamentFormat("default_format")
+      .notNull()
+      .default("round-robin"),
+    defaultTeams: smallint("default_teams").notNull().default(6),
+    courts: smallint("courts").notNull().default(1),
+    confirmBeforeSave: boolean("confirm_before_save").notNull().default(true),
+    haptics: boolean("haptics").notNull().default(true),
+    keepAwake: boolean("keep_awake").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check("settings_singleton", sql`${table.id} = 1`),
+    check(
+      "settings_default_teams_range",
+      sql`${table.defaultTeams} between 4 and 16 and ${table.defaultTeams} % 2 = 0`,
+    ),
+    check("settings_courts_range", sql`${table.courts} between 1 and 8`),
+  ],
+);
+
 /* -------------------------------------------------------------- relations */
 
 export const tournamentsRelations = relations(tournaments, ({ many }) => ({
@@ -175,3 +206,4 @@ export type TeamRow = typeof teams.$inferSelect;
 export type TeamInsert = typeof teams.$inferInsert;
 export type MatchRow = typeof matches.$inferSelect;
 export type MatchInsert = typeof matches.$inferInsert;
+export type SettingsRow = typeof settings.$inferSelect;

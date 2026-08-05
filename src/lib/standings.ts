@@ -135,6 +135,56 @@ function headToHeadPoints(
   return points;
 }
 
+/**
+ * Paaiškinimas po lentele: kuri pora buvo susilyginusi ir kas nulėmė tvarką.
+ * Grąžina null, kai lygiųjų nebuvo.
+ */
+export function tieBreakNote(
+  rows: StandingRow[],
+  matches: Match[],
+): { headline: string; detail: string } | null {
+  for (let index = 0; index + 1 < rows.length; index += 1) {
+    const above = rows[index];
+    const below = rows[index + 1];
+    if (above.wins !== below.wins) continue;
+
+    const direct = matches.find(
+      (match) =>
+        match.stage === "round-robin" &&
+        isPlayed(match) &&
+        ((match.homeTeamId === above.team.id &&
+          match.awayTeamId === below.team.id) ||
+          (match.homeTeamId === below.team.id &&
+            match.awayTeamId === above.team.id)),
+    );
+
+    const headline = `${above.team.name} above ${below.team.name}`;
+
+    if (direct?.score) {
+      const aboveScore =
+        direct.homeTeamId === above.team.id
+          ? direct.score.home
+          : direct.score.away;
+      const belowScore =
+        direct.homeTeamId === above.team.id
+          ? direct.score.away
+          : direct.score.home;
+
+      return {
+        headline,
+        detail: `tied on ${above.wins} ${above.wins === 1 ? "win" : "wins"}, decided head-to-head (${aboveScore}–${belowScore}). Then total points scored.`,
+      };
+    }
+
+    return {
+      headline,
+      detail: `tied on ${above.wins} ${above.wins === 1 ? "win" : "wins"}, decided on total points scored (${above.pointsFor}–${below.pointsFor}).`,
+    };
+  }
+
+  return null;
+}
+
 export function roundRobinComplete(matches: Match[]): boolean {
   const roundRobin = matches.filter((match) => match.stage === "round-robin");
   return roundRobin.length > 0 && roundRobin.every(isPlayed);

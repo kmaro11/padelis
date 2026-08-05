@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 
 import { db } from "./index";
 import { toTournament } from "./mappers";
-import { matches, teams, tournaments } from "./schema";
+import { matches, settings, teams, tournaments } from "./schema";
+import type { SettingsRow } from "./schema";
 import { advanceFormat, createTournament } from "@/lib/schedule";
 import { isPlayed } from "@/lib/standings";
 import type { MatchScore, Tournament, TournamentFormat } from "@/lib/types";
@@ -178,12 +179,36 @@ export async function saveMatchScore(
   score: MatchScore,
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    const before = await loadForUpdate(tx, tournamentId);
+    if (!before) return;
+
+    const edited = before.matches.find((match) => match.id === matchId);
+    if (!edited) return;
+
     await tx
       .update(matches)
       .set({ homeScore: score.home, awayScore: score.away })
       .where(
         and(eq(matches.id, matchId), eq(matches.tournamentId, tournamentId)),
       );
+
+    // Taisant Round Robin rezultatą pasikeičia sėjimas, tad dar neprasidėjęs
+    // bracket / placement etapas išmetamas ir sugeneruojamas iš naujo.
+    if (edited.stage === "round-robin") {
+      const knockout = before.matches.filter(
+        (match) => match.stage !== "round-robin",
+      );
+      const started = knockout.some(isPlayed);
+
+      if (knockout.length > 0 && !started) {
+        await tx.delete(matches).where(
+          and(
+            eq(matches.tournamentId, tournamentId),
+            ne(matches.stage, "round-robin"),
+          ),
+        );
+      }
+    }
 
     const current = await loadForUpdate(tx, tournamentId);
     if (!current) return;
@@ -238,6 +263,40 @@ export async function saveMatchScore(
       .set({ status })
       .where(eq(tournaments.id, tournamentId));
   });
+}
+
+export async function renameTeam(
+  teamId: string,
+  name: string,
+): Promise<void> {
+  const clean = name.trim().slice(0, 60);
+  if (clean.length === 0) return;
+
+  await db.update(teams).set({ name: clean }).where(eq(teams.id, teamId));
+}
+
+/* --------------------------------------------------------------- settings */
+
+export type Settings = SettingsRow;
+
+/** Eilutė sukuriama migracijoje; čia tik apsidraudžiam. */
+export async function getSettings(): Promise<Settings> {
+  const [row] = await db.select().from(settings).where(eq(settings.id, 1));
+  if (row) return row;
+
+  const [created] = await db
+    .insert(settings)
+    .values({ id: 1 })
+    .onConflictDoNothing()
+    .returning();
+
+  return created;
+}
+
+export async function updateSettings(
+  patch: Partial<Omit<Settings, "id" | "updatedAt">>,
+): Promise<void> {
+  await db.update(settings).set(patch).where(eq(settings.id, 1));
 }
 
 export async function deleteTournament(id: string): Promise<void> {

@@ -6,8 +6,11 @@ import {
   deleteAllData,
   deleteTournament,
   insertTournament,
+  renameTeam,
   saveMatchScore,
+  updateSettings,
   type CreateTournamentInput,
+  type Settings,
 } from "@/db/queries";
 import type { MatchScore } from "@/lib/types";
 
@@ -32,6 +35,24 @@ export async function deleteTournamentAction(id: string) {
   await deleteTournament(id);
   revalidatePath("/");
   revalidatePath("/events");
+  revalidatePath("/tournament");
+}
+
+export async function renameTeamAction(
+  tournamentId: string,
+  teamId: string,
+  name: string,
+) {
+  await renameTeam(teamId, name);
+  revalidatePath(`/tournament/${tournamentId}/teams`);
+  revalidatePath(`/tournament/${tournamentId}`);
+}
+
+export async function updateSettingsAction(
+  patch: Partial<Omit<Settings, "id" | "updatedAt">>,
+) {
+  await updateSettings(patch);
+  revalidatePath("/settings");
 }
 
 export async function deleteAllDataAction() {

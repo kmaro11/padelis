@@ -12,7 +12,7 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const BASE =
-  "flex h-[54px] w-full items-center justify-center rounded-tile text-lg font-semibold tracking-snug transition-colors duration-150 ease-ios";
+  "flex h-[54px] w-full shrink-0 items-center justify-center rounded-tile text-lg font-semibold tracking-snug transition-colors duration-150 ease-ios";
 
 interface ButtonProps {
   variant?: Variant;

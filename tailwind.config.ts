@@ -28,6 +28,7 @@ const config: Config = {
         "on-ink-dim": "rgba(255,255,255,.5)",
         "on-ink-track": "rgba(255,255,255,.16)",
         canvas: "#e9e7e3",
+        surface: "#f7f6f4",
       },
       fontFamily: {
         sans: [

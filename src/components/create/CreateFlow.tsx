@@ -17,15 +17,25 @@ import { FormatCards, TeamCountGrid, TeamNameInputs } from "./steps";
 
 const STEPS = ["Date", "Teams", "Names", "Format"] as const;
 
-export function CreateFlow() {
+export interface CreateDefaults {
+  defaultTeams: number;
+  defaultFormat: TournamentFormat;
+  courts: number;
+}
+
+export function CreateFlow({ defaults }: { defaults: CreateDefaults }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   const [step, setStep] = useState(0);
   const [date, setDate] = useState<string | null>(null);
-  const [teamCount, setTeamCount] = useState(6);
-  const [names, setNames] = useState<string[]>(() => defaultNames(6));
-  const [format, setFormat] = useState<TournamentFormat>("round-robin");
+  const [teamCount, setTeamCount] = useState(defaults.defaultTeams);
+  const [names, setNames] = useState<string[]>(() =>
+    defaultNames(defaults.defaultTeams),
+  );
+  const [format, setFormat] = useState<TournamentFormat>(
+    defaults.defaultFormat,
+  );
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +63,7 @@ export function CreateFlow() {
           name: suggestName(date as string),
           date: date as string,
           format,
-          courts: 1,
+          courts: defaults.courts,
           teamNames: names,
         });
         setCreatedId(id);
@@ -71,7 +81,7 @@ export function CreateFlow() {
   };
 
   return (
-    <Screen>
+    <Screen nav={false}>
       <header className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <button

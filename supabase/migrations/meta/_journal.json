@@ -15,6 +15,20 @@
       "when": 1785926577510,
       "tag": "0001_triggers_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785927928951,
+      "tag": "0002_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785927937407,
+      "tag": "0003_settings_rls",
+      "breakpoints": true
     }
   ]
 }
