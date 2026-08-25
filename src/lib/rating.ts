@@ -18,7 +18,15 @@ export const RETURN_MULTIPLIER = 1.5;
 export const FINAL_MULTIPLIER = 1.5;
 /** nuo tiek praleistų iš eilės — perkalibracijos daugiklis */
 export const MISSED_FOR_RETURN = 3;
-export const MIN_TOURNAMENTS_PUBLIC = 4;
+/**
+ * Nuo kelinto turnyro žaidėjas patenka į viešą lentelę (§9).
+ *
+ * Specifikacijoje — 4, bet pradžioje rodom visus, kas bent kartą žaidė:
+ * kol turnyrų mažai, tuščia lentelė naudos neduoda. Uždėti ribą = pakeisti
+ * šitą vieną skaičių į 3; visa kita (vietų numeracija, "dar N iki lentelės"
+ * užrašas) prisitaiko savaime.
+ */
+export const MIN_TOURNAMENTS_PUBLIC = 1;
 export const STALE_DAYS = 28;
 
 /* ---------------------------------------------------------------- formulės */

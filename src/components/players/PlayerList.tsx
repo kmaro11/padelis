@@ -9,12 +9,26 @@ import { initials } from "@/lib/tournament-view";
 import type { Player, RatingRow } from "@/lib/types";
 import { AddPlayerRow } from "./AddPlayerRow";
 
-/** Reitingas mažėjančiai, o susilyginus — pagal vardą. */
-function byRating(a: RatingRow, b: RatingRow): number {
-  return b.rating - a.rating || a.player.name.localeCompare(b.player.name);
+function byName(a: RatingRow, b: RatingRow): number {
+  return a.player.name.localeCompare(b.player.name);
 }
 
-/** Naujai pridėtas žaidėjas — 1000, dar be turnyrų (§7). */
+/** 1 turnyras · 2–9 turnyrai · 10–20, 0 turnyrų */
+function tournamentWord(count: number): string {
+  const last = count % 10;
+  const teens = count % 100 >= 11 && count % 100 <= 19;
+
+  if (teens || last === 0) return "turnyrų";
+  if (last === 1) return "turnyras";
+  return "turnyrai";
+}
+
+const SHORT_DATE = new Intl.DateTimeFormat("lt-LT", {
+  day: "numeric",
+  month: "short",
+});
+
+/** Naujai pridėtas žaidėjas — dar be turnyrų. */
 function freshRow(player: Player): RatingRow {
   return {
     player,
@@ -27,8 +41,12 @@ function freshRow(player: Player): RatingRow {
   };
 }
 
+/**
+ * Vardų sąrašas su aktyvumu — kiek turnyrų sužaidė ir kada paskutinį kartą.
+ * Reitingai lieka atskirame Reitingų ekrane.
+ */
 export function PlayerList({ players }: { players: RatingRow[] }) {
-  const [list, setList] = useState(players);
+  const [list, setList] = useState(() => [...players].sort(byName));
   const [editing, setEditing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -36,15 +54,14 @@ export function PlayerList({ players }: { players: RatingRow[] }) {
     <div className="flex flex-col">
       <AddPlayerRow
         onAdded={(player) =>
-          setList((current) => [...current, freshRow(player)].sort(byRating))
+          setList((current) => [...current, freshRow(player)].sort(byName))
         }
       />
 
-      {list.map((row, index) => (
+      {list.map((row) => (
         <PlayerRow
           key={row.player.id}
           row={row}
-          rank={row.ranked ? index + 1 : null}
           editing={editing === row.player.id}
           deleting={deleting === row.player.id}
           onEdit={() => {
@@ -60,7 +77,7 @@ export function PlayerList({ players }: { players: RatingRow[] }) {
                     ? { ...item, player: { ...item.player, name } }
                     : item,
                 )
-                .sort(byRating),
+                .sort(byName),
             )
           }
           onDeletePrompt={() => {
@@ -69,9 +86,7 @@ export function PlayerList({ players }: { players: RatingRow[] }) {
           }}
           onDeleteCancel={() => setDeleting(null)}
           onDeleted={() =>
-            setList((current) =>
-              current.filter((item) => item.player.id !== row.player.id),
-            )
+            setList((current) => current.filter((item) => item.player.id !== row.player.id))
           }
         />
       ))}
@@ -81,7 +96,6 @@ export function PlayerList({ players }: { players: RatingRow[] }) {
 
 function PlayerRow({
   row,
-  rank,
   editing,
   deleting,
   onEdit,
@@ -92,7 +106,6 @@ function PlayerRow({
   onDeleted,
 }: {
   row: RatingRow;
-  rank: number | null;
   editing: boolean;
   deleting: boolean;
   onEdit: () => void;
@@ -102,19 +115,20 @@ function PlayerRow({
   onDeleteCancel: () => void;
   onDeleted: () => void;
 }) {
-  const [name, setName] = useState(row.player.name);
+  const player = row.player;
+  const [name, setName] = useState(player.name);
   const [pending, startTransition] = useTransition();
 
   const save = () => {
     const clean = name.trim();
-    if (clean.length === 0 || clean === row.player.name) {
-      setName(row.player.name);
+    if (clean.length === 0 || clean === player.name) {
+      setName(player.name);
       onDone();
       return;
     }
 
     startTransition(async () => {
-      await renamePlayerAction(row.player.id, clean);
+      await renamePlayerAction(player.id, clean);
       onRenamed(clean);
       onDone();
     });
@@ -122,19 +136,15 @@ function PlayerRow({
 
   const remove = () => {
     startTransition(async () => {
-      await deletePlayerAction(row.player.id);
+      await deletePlayerAction(player.id);
       onDeleted();
     });
   };
 
   return (
     <div className="flex items-center gap-3.5 border-b border-hair py-3.5">
-      <span className="w-5 shrink-0 text-center text-sm font-bold text-gold">
-        {rank ?? <span className="text-faint">–</span>}
-      </span>
-
       <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-fill text-sm font-semibold text-dim">
-        {initials(editing ? name : row.player.name)}
+        {initials(editing ? name : player.name)}
       </span>
 
       {editing ? (
@@ -147,7 +157,7 @@ function PlayerRow({
             onKeyDown={(event) => {
               if (event.key === "Enter") save();
               if (event.key === "Escape") {
-                setName(row.player.name);
+                setName(player.name);
                 onDone();
               }
             }}
@@ -157,7 +167,7 @@ function PlayerRow({
             type="button"
             aria-label="Cancel"
             onClick={() => {
-              setName(row.player.name);
+              setName(player.name);
               onDone();
             }}
             className="flex size-9 items-center justify-center rounded-full text-glyph active:bg-fill"
@@ -180,7 +190,7 @@ function PlayerRow({
       ) : deleting ? (
         <>
           <span className="flex-1 text-base text-dim">
-            Remove {row.player.name}?
+            Remove {player.name}?
           </span>
           <button
             type="button"
@@ -192,7 +202,7 @@ function PlayerRow({
           </button>
           <button
             type="button"
-            aria-label={`Confirm delete ${row.player.name}`}
+            aria-label={`Confirm delete ${player.name}`}
             onClick={remove}
             disabled={pending}
             className={cn(
@@ -206,42 +216,21 @@ function PlayerRow({
       ) : (
         <>
           <span className="flex min-w-0 flex-1 flex-col">
-            <span
-              className={cn(
-                "truncate text-base font-medium",
-                row.stale && "text-dim",
-              )}
-            >
-              {row.player.name}
+            <span className="truncate text-base font-medium">
+              {player.name}
             </span>
-            <span className="mt-0.5 text-xs text-dim">
+            <span className="mt-0.5 truncate text-xs text-dim">
               {row.tournamentsPlayed === 0
                 ? "Dar nežaidė"
-                : `${row.tournamentsPlayed} ${row.tournamentsPlayed === 1 ? "turnyras" : "turnyrai"}`}
-              {row.ranked ? null : row.tournamentsPlayed > 0 ? " · nereitinguojamas" : null}
-              {row.stale ? " · pasenęs" : null}
+                : `${row.tournamentsPlayed} ${tournamentWord(row.tournamentsPlayed)}`}
+              {row.lastPlayedAt
+                ? ` · ${SHORT_DATE.format(new Date(`${row.lastPlayedAt}T00:00:00`))}`
+                : null}
             </span>
-          </span>
-
-          <span className="flex shrink-0 flex-col items-end">
-            <span className="text-base font-semibold tabular-nums">
-              {row.rating}
-            </span>
-            {row.lastChange !== null && row.lastChange !== 0 ? (
-              <span
-                className={cn(
-                  "mt-0.5 text-xs tabular-nums",
-                  row.lastChange > 0 ? "text-gold" : "text-dim",
-                )}
-              >
-                {row.lastChange > 0 ? "+" : "−"}
-                {Math.abs(row.lastChange)}
-              </span>
-            ) : null}
           </span>
           <button
             type="button"
-            aria-label={`Rename ${row.player.name}`}
+            aria-label={`Rename ${player.name}`}
             onClick={onEdit}
             className="flex size-9 items-center justify-center rounded-full text-faint active:bg-fill"
           >
@@ -249,7 +238,7 @@ function PlayerRow({
           </button>
           <button
             type="button"
-            aria-label={`Delete ${row.player.name}`}
+            aria-label={`Delete ${player.name}`}
             onClick={onDeletePrompt}
             className="flex size-9 items-center justify-center rounded-full text-faint active:bg-fill"
           >

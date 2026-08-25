@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   House,
+  Medal,
   Settings,
   Trophy,
   Users,
@@ -24,6 +25,7 @@ const TABS: Tab[] = [
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/tournament", label: "Tournament", icon: Trophy },
   { href: "/players", label: "Players", icon: Users },
+  { href: "/ratings", label: "Reitingai", icon: Medal },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -32,7 +34,8 @@ export function FloatingNav() {
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-nav items-center justify-center pb-[env(safe-area-inset-bottom)]">
-      <nav className="pointer-events-auto flex items-center gap-2.5 rounded-nav bg-white p-2 shadow-nav">
+      {/* gap-2, ne 2.5 — su šešiais skirtukais juosta netelpa siauruose telefonuose */}
+      <nav className="pointer-events-auto flex items-center gap-2 rounded-nav bg-white p-2 shadow-nav">
         {TABS.map((tab) => {
           const active =
             tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
