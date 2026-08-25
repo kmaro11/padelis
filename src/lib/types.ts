@@ -14,6 +14,11 @@ export interface Team {
   name: string;
 }
 
+export interface Player {
+  id: string;
+  name: string;
+}
+
 export interface MatchScore {
   home: number;
   away: number;

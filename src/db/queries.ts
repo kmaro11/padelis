@@ -3,14 +3,19 @@ import "server-only";
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 
 import { db } from "./index";
-import { toTournament } from "./mappers";
-import { matches, settings, teams, tournaments } from "./schema";
+import { toPlayer, toTournament } from "./mappers";
+import { matches, players, settings, teams, tournaments } from "./schema";
 import type { SettingsRow } from "./schema";
 import { advanceFormat, createTournament } from "@/lib/schedule";
 import { isPlayed } from "@/lib/standings";
-import type { MatchScore, Tournament, TournamentFormat } from "@/lib/types";
+import type { MatchScore, Player, Tournament, TournamentFormat } from "@/lib/types";
 
 /* ------------------------------------------------------------------ reads */
+
+export async function listPlayers(): Promise<Player[]> {
+  const rows = await db.select().from(players).orderBy(asc(players.name));
+  return rows.map(toPlayer);
+}
 
 export async function listTournaments(): Promise<Tournament[]> {
   const rows = await db
@@ -263,6 +268,25 @@ export async function saveMatchScore(
       .set({ status })
       .where(eq(tournaments.id, tournamentId));
   });
+}
+
+export async function createPlayer(name: string): Promise<Player> {
+  const clean = name.trim().slice(0, 60);
+  if (clean.length === 0) throw new Error("Name required");
+
+  const [row] = await db.insert(players).values({ name: clean }).returning();
+  return toPlayer(row);
+}
+
+export async function renamePlayer(id: string, name: string): Promise<void> {
+  const clean = name.trim().slice(0, 60);
+  if (clean.length === 0) return;
+
+  await db.update(players).set({ name: clean }).where(eq(players.id, id));
+}
+
+export async function deletePlayer(id: string): Promise<void> {
+  await db.delete(players).where(eq(players.id, id));
 }
 
 export async function renameTeam(

@@ -1,7 +1,11 @@
-import type { MatchRow, TeamRow, TournamentRow } from "./schema";
-import type { Match, Team, Tournament } from "@/lib/types";
+import type { MatchRow, PlayerRow, TeamRow, TournamentRow } from "./schema";
+import type { Match, Player, Team, Tournament } from "@/lib/types";
 
 export function toTeam(row: TeamRow): Team {
+  return { id: row.id, name: row.name };
+}
+
+export function toPlayer(row: PlayerRow): Player {
   return { id: row.id, name: row.name };
 }
 

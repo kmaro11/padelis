@@ -61,6 +61,21 @@ export const tournaments = pgTable(
   ],
 );
 
+export const players = pgTable(
+  "players",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("players_name_idx").on(table.name),
+    check("players_name_len", sql`char_length(btrim(${table.name})) between 1 and 60`),
+  ],
+);
+
 export const teams = pgTable(
   "teams",
   {
@@ -202,6 +217,8 @@ export const matchesRelations = relations(matches, ({ one }) => ({
 
 export type TournamentRow = typeof tournaments.$inferSelect;
 export type TournamentInsert = typeof tournaments.$inferInsert;
+export type PlayerRow = typeof players.$inferSelect;
+export type PlayerInsert = typeof players.$inferInsert;
 export type TeamRow = typeof teams.$inferSelect;
 export type TeamInsert = typeof teams.$inferInsert;
 export type MatchRow = typeof matches.$inferSelect;

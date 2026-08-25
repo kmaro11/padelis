@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, House, Settings, Trophy, type LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  House,
+  Settings,
+  Trophy,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 import { cn } from "../ui/cn";
 
@@ -16,6 +23,7 @@ const TABS: Tab[] = [
   { href: "/", label: "Home", icon: House },
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/tournament", label: "Tournament", icon: Trophy },
+  { href: "/players", label: "Players", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

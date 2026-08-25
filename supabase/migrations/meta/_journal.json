@@ -29,6 +29,20 @@
       "when": 1785927937407,
       "tag": "0003_settings_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787653141695,
+      "tag": "0004_solid_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787653141696,
+      "tag": "0005_players_rls",
+      "breakpoints": true
     }
   ]
 }
