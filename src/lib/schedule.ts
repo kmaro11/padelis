@@ -1,10 +1,17 @@
 import { computeStandings, loserId, roundRobinComplete, winnerId } from "./standings";
-import type {
-  Match,
-  Team,
-  TeamDraft,
-  Tournament,
-  TournamentFormat,
+import {
+  FIFTH_PLACE,
+  GROUP_SIZE,
+  GROUPS,
+  isPlateSemi,
+  PLATE_SEMI_LABELS,
+  SEVENTH_PLACE,
+  type GroupKey,
+  type Match,
+  type Team,
+  type TeamDraft,
+  type Tournament,
+  type TournamentFormat,
 } from "./types";
 
 let counter = 0;
@@ -19,6 +26,7 @@ export function createTeams(drafts: TeamDraft[]): Team[] {
     name: draft.name.trim() || `Team ${index + 1}`,
     player1Id: draft.player1Id,
     player2Id: draft.player2Id,
+    group: null,
   }));
 }
 
@@ -175,6 +183,144 @@ export function generateFinalFourMatches(tournament: Tournament): Match[] {
   ];
 }
 
+/* ------------------------------------------------ Grupės + Finalai */
+
+
+/** Burtai: komandos išmaišomos ir dalijamos pusiau į A ir B. */
+export function assignGroups(teams: Team[]): Team[] {
+  const shuffled = [...teams];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]];
+  }
+
+  const drawn = new Map(
+    shuffled.map((team, index) => [
+      team.id,
+      index < shuffled.length / 2 ? "A" : "B",
+    ]),
+  );
+
+  // grąžinam originalia tvarka — burtai keičia tik grupę, ne seed'ą
+  return teams.map((team) => ({
+    ...team,
+    group: (drawn.get(team.id) ?? null) as GroupKey | null,
+  }));
+}
+
+export function teamsInGroup(teams: Team[], group: GroupKey): Team[] {
+  return teams.filter((team) => team.group === group);
+}
+
+/**
+ * Grupių etapas: kiekviena grupė žaidžia savo Round Robin, o turai sutampa —
+ * 1 turas grupėje A vyksta kartu su 1 turu grupėje B. Aikštelės dalijamos
+ * per abi grupes, kad viename ture niekas nesikartotų.
+ */
+export function generateGroupStage(teams: Team[], courts: number): Match[] {
+  const merged = GROUPS.flatMap((group) =>
+    generateRoundRobin(teamsInGroup(teams, group), 1),
+  );
+
+  const byRound = new Map<number, Match[]>();
+  for (const match of merged) {
+    byRound.set(match.round, [...(byRound.get(match.round) ?? []), match]);
+  }
+
+  return [...byRound.entries()]
+    .sort(([a], [b]) => a - b)
+    .flatMap(([, group]) =>
+      group.map((match, index) => ({
+        ...match,
+        court: (index % Math.max(1, courts)) + 1,
+      })),
+    );
+}
+
+/**
+ * Po grupių: kryžminiai pusfinaliai (A1–B2, A2–B1) viršuje ir tokie patys
+ * apačioje iš 3–4 vietų, tada finalai dėl 1, 3, 5 ir 7 vietos.
+ */
+export function generateGroupsFinalsMatches(tournament: Tournament): Match[] {
+  if (!roundRobinComplete(tournament.matches)) return [];
+
+  const [a, b] = GROUPS.map((group) =>
+    computeStandings(teamsInGroup(tournament.teams, group), tournament.matches),
+  );
+
+  if (a.length < GROUP_SIZE || b.length < GROUP_SIZE) return [];
+
+  const round = maxRound(tournament.matches) + 1;
+  const courts = Math.max(1, tournament.courts);
+
+  const pairs: {
+    home: string;
+    away: string;
+    stage: Match["stage"];
+    label: string;
+  }[] = [
+    { home: a[0].team.id, away: b[1].team.id, stage: "semifinal", label: "Semifinal 1" },
+    { home: a[1].team.id, away: b[0].team.id, stage: "semifinal", label: "Semifinal 2" },
+    { home: a[2].team.id, away: b[3].team.id, stage: "placement", label: PLATE_SEMI_LABELS[0] },
+    { home: a[3].team.id, away: b[2].team.id, stage: "placement", label: PLATE_SEMI_LABELS[1] },
+  ];
+
+  const semis: Match[] = pairs.map((pair, index) => ({
+    id: nextId("match"),
+    round,
+    stage: pair.stage,
+    homeTeamId: pair.home,
+    awayTeamId: pair.away,
+    score: null,
+    label: pair.label,
+    court: (index % courts) + 1,
+  }));
+
+  // komandos paaiškės tik sužaidus pusfinalius
+  const finals: Match[] = (
+    [
+      { stage: "final", label: "Final" },
+      { stage: "third-place", label: "Third place" },
+      { stage: "placement", label: FIFTH_PLACE },
+      { stage: "placement", label: SEVENTH_PLACE },
+    ] as { stage: Match["stage"]; label: string }[]
+  ).map((final, index) => ({
+    id: nextId("match"),
+    round: round + 1,
+    stage: final.stage,
+    homeTeamId: null,
+    awayTeamId: null,
+    score: null,
+    label: final.label,
+    court: (index % courts) + 1,
+  }));
+
+  return [...semis, ...finals];
+}
+
+/** Užpildo visų keturių finalų slotus, kai pusfinaliai sužaisti. */
+export function resolveGroupsFinalsSlots(matches: Match[]): Match[] {
+  const upper = matches.filter((match) => match.stage === "semifinal");
+  const lower = matches.filter((match) => isPlateSemi(match.label));
+
+  const fill = (
+    match: Match,
+    semis: Match[],
+    pick: (semi: Match) => string | null,
+  ): Match => {
+    if (semis.length !== 2) return match;
+    return { ...match, homeTeamId: pick(semis[0]), awayTeamId: pick(semis[1]) };
+  };
+
+  return matches.map((match) => {
+    if (match.stage === "final") return fill(match, upper, winnerId);
+    if (match.stage === "third-place") return fill(match, upper, loserId);
+    if (match.label === FIFTH_PLACE) return fill(match, lower, winnerId);
+    if (match.label === SEVENTH_PLACE) return fill(match, lower, loserId);
+    return match;
+  });
+}
+
 /** Fills final / third-place slots once both semifinals are decided. */
 export function resolveBracketSlots(matches: Match[]): Match[] {
   const semis = matches.filter((match) => match.stage === "semifinal");
@@ -208,7 +354,12 @@ export function advanceFormat(tournament: Tournament): Tournament {
     }
   }
 
-  return { ...tournament, matches: resolveBracketSlots(tournament.matches) };
+  const resolved =
+    tournament.format === "groups-finals"
+      ? resolveGroupsFinalsSlots(tournament.matches)
+      : resolveBracketSlots(tournament.matches);
+
+  return { ...tournament, matches: resolved };
 }
 
 function extraMatchesFor(
@@ -217,6 +368,7 @@ function extraMatchesFor(
 ): Match[] {
   if (format === "placement") return generatePlacementMatches(tournament);
   if (format === "final-four") return generateFinalFourMatches(tournament);
+  if (format === "groups-finals") return generateGroupsFinalsMatches(tournament);
   return [];
 }
 
@@ -228,7 +380,11 @@ export function createTournament(input: {
   rated: boolean;
   teams: TeamDraft[];
 }): Tournament {
-  const teams = createTeams(input.teams);
+  const groups = input.format === "groups-finals";
+  const courts = Math.max(1, input.courts);
+  const teams = groups
+    ? assignGroups(createTeams(input.teams))
+    : createTeams(input.teams);
 
   return {
     id: nextId("tournament"),
@@ -236,10 +392,12 @@ export function createTournament(input: {
     date: input.date,
     format: input.format,
     status: "draft",
-    courts: Math.max(1, input.courts),
+    courts,
     rated: input.rated,
     teams,
-    matches: generateRoundRobin(teams, Math.max(1, input.courts)),
+    matches: groups
+      ? generateGroupStage(teams, courts)
+      : generateRoundRobin(teams, courts),
   };
 }
 

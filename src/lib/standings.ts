@@ -1,4 +1,11 @@
-import type { Match, StandingRow, Team } from "./types";
+import {
+  FIFTH_PLACE,
+  isPlateSemi,
+  SEVENTH_PLACE,
+  type Match,
+  type StandingRow,
+  type Team,
+} from "./types";
 
 interface Accumulator {
   team: Team;
@@ -227,12 +234,23 @@ export function computeFinalPlacings(
     const away = match.awayTeamId;
     if (!home || !away) continue;
 
+    // Apatinio tinklelio pusfinaliai vietų nedalija — jas nulems 5-os ir
+    // 7-os vietos rungtynės, tad čia juos praleidžiam.
+    if (isPlateSemi(match.label)) continue;
+
     const base =
       match.stage === "final"
         ? 1
         : match.stage === "third-place"
           ? 3
-          : Math.min(rrPosition.get(home) ?? 99, rrPosition.get(away) ?? 99);
+          : match.label === FIFTH_PLACE
+            ? 5
+            : match.label === SEVENTH_PLACE
+              ? 7
+              : Math.min(
+                  rrPosition.get(home) ?? 99,
+                  rrPosition.get(away) ?? 99,
+                );
 
     const decidedBy =
       match.stage === "final"

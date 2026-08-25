@@ -3,11 +3,16 @@ import { notFound } from "next/navigation";
 import { Screen } from "@/components/layout/AppShell";
 import { BackLink } from "@/components/tournament/BackLink";
 import { FinalPlacings } from "@/components/tournament/FinalPlacings";
+import {
+  GroupsBracket,
+  type SeedMap,
+} from "@/components/tournament/GroupsBracket";
 import { cn } from "@/components/ui/cn";
 import { getTournament } from "@/db/queries";
+import { teamsInGroup } from "@/lib/schedule";
 import { computeStandings } from "@/lib/standings";
 import { teamName } from "@/lib/tournament-view";
-import type { Match, Tournament } from "@/lib/types";
+import { GROUPS, type Match, type Tournament } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +22,44 @@ export default async function BracketPage({
   const { id } = await params;
   const tournament = await getTournament(id);
   if (!tournament) notFound();
+
+  /**
+   * "Grupės + Finalai" turi savo tinklelius — du atskirus, o vietoj bendro
+   * sėjimo numerio rodom grupės vietą ("A1", "B2").
+   */
+  if (tournament.format === "groups-finals") {
+    const seedOf: SeedMap = new Map(
+      GROUPS.flatMap((group) =>
+        computeStandings(
+          teamsInGroup(tournament.teams, group),
+          tournament.matches,
+        ).map(
+          (row, index) => [row.team.id, `${group}${index + 1}`] as const,
+        ),
+      ),
+    );
+
+    return (
+      <Screen>
+        <BackLink href={`/tournament/${id}`}>Tournament</BackLink>
+
+        <header>
+          <h1 className="text-[30px] font-bold leading-[1.1] tracking-display">
+            Bracket
+          </h1>
+          <p className="mt-[7px] text-sm text-dim">
+            Kryžminiai pusfinaliai iš grupių lentelių
+          </p>
+        </header>
+
+        <GroupsBracket tournament={tournament} seedOf={seedOf} />
+
+        {tournament.matches.some((match) => match.stage === "semifinal") ? (
+          <FinalPlacings tournament={tournament} />
+        ) : null}
+      </Screen>
+    );
+  }
 
   const rows = computeStandings(tournament.teams, tournament.matches);
   const semis = tournament.matches.filter(

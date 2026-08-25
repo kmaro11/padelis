@@ -7,6 +7,7 @@ export function toTeam(row: TeamRow): Team {
     name: row.name,
     player1Id: row.player1Id,
     player2Id: row.player2Id,
+    group: (row.group as Team["group"]) ?? null,
   };
 }
 

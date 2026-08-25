@@ -11,7 +11,12 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { parseDate } from "@/lib/date";
-import type { Player, TeamDraft, TournamentFormat } from "@/lib/types";
+import {
+  GROUPS_FINALS_TEAMS,
+  type Player,
+  type TeamDraft,
+  type TournamentFormat,
+} from "@/lib/types";
 import { Calendar } from "./Calendar";
 import { FormatCards, RatedCheckbox, TeamCountGrid } from "./steps";
 import { TeamBuilder, type TeamSlots } from "./TeamBuilder";
@@ -85,6 +90,12 @@ export function CreateFlow({
 
   const setCount = (count: number) => {
     setTeamCount(count);
+    // "Grupės + Finalai" veikia tik su 8 — pakeitus skaičių formatas nebetinka
+    if (count !== GROUPS_FINALS_TEAMS) {
+      setFormat((current) =>
+        current === "groups-finals" ? defaults.defaultFormat : current,
+      );
+    }
     setTeams((current) =>
       Array.from(
         { length: count },

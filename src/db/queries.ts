@@ -156,6 +156,7 @@ export async function insertTournament(
           seed: index + 1,
           player1Id: team.player1Id,
           player2Id: team.player2Id,
+          group: team.group,
         })),
       )
       .returning({ id: teams.id, seed: teams.seed });

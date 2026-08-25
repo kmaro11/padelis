@@ -11,7 +11,8 @@ import {
   roundRobinComplete,
   tieBreakNote,
 } from "@/lib/standings";
-import type { StandingRow } from "@/lib/types";
+import { teamsInGroup } from "@/lib/schedule";
+import { GROUPS, type StandingRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -24,15 +25,40 @@ export default async function StandingsPage({
   const tournament = await getTournament(id);
   if (!tournament) notFound();
 
-  const rows = computeStandings(tournament.teams, tournament.matches);
-  const note = tieBreakNote(rows, tournament.matches);
+  const groups = tournament.format === "groups-finals";
+
+  /**
+   * "Grupės + Finalai" — atskira lentelė kiekvienai grupei; kitur viena
+   * bendra. `computeStandings` skaičiuoja tik tarp jai paduotų komandų,
+   * tad grupės viena kitai neįtakoja.
+   */
+  const tables = groups
+    ? GROUPS.map((group) => ({
+        title: `Grupė ${group}`,
+        rows: computeStandings(
+          teamsInGroup(tournament.teams, group),
+          tournament.matches,
+        ),
+      }))
+    : [
+        {
+          title: null,
+          rows: computeStandings(tournament.teams, tournament.matches),
+        },
+      ];
+
+  const note = tieBreakNote(tables[0].rows, tournament.matches);
   const final = roundRobinComplete(tournament.matches);
   const roundRobin = progress(
     tournament.matches.filter((match) => match.stage === "round-robin"),
   );
 
-  /** Final Four atveja pirmi keturi patenka į bracket'ą — brūkšnys po jų. */
-  const cutoff = tournament.format === "final-four" ? 4 : null;
+  /**
+   * Final Four — pirmi keturi patenka į bracket'ą; grupėse pirmi du kyla
+   * į viršutinį tinklelį. Po jų brėžiam liniją.
+   */
+  const cutoff =
+    tournament.format === "final-four" ? 4 : groups ? 2 : null;
 
   const hasKnockout = tournament.matches.some(
     (match) => match.stage !== "round-robin",
@@ -61,30 +87,38 @@ export default async function StandingsPage({
         </p>
       ) : null}
 
-      <div
-        className={cn(
-          GRID,
-          "px-3.5 text-[10.5px] font-semibold uppercase tracking-caption text-dim",
-        )}
-      >
-        <span>#</span>
-        <span>Team</span>
-        <span className="text-center">W</span>
-        <span className="text-center">L</span>
-        <span className="text-center">PF</span>
-        <span className="text-center">PA</span>
-      </div>
+      {tables.map((table) => (
+        <section key={table.title ?? "all"} className="flex flex-col gap-2">
+          {table.title ? (
+            <p className="text-[10.5px] font-semibold uppercase tracking-badge text-dim">
+              {table.title}
+            </p>
+          ) : null}
 
-      <div className="flex flex-col gap-2">
-        {rows.map((row, index) => (
-          <div key={row.team.id}>
-            <StandingRowView row={row} leader={index === 0} cutoff={cutoff} />
-            {cutoff !== null && row.position === cutoff ? (
-              <div className="mx-3.5 mt-2 h-px bg-hair" />
-            ) : null}
+          <div
+            className={cn(
+              GRID,
+              "px-3.5 text-[10.5px] font-semibold uppercase tracking-caption text-dim",
+            )}
+          >
+            <span>#</span>
+            <span>Team</span>
+            <span className="text-center">W</span>
+            <span className="text-center">L</span>
+            <span className="text-center">PF</span>
+            <span className="text-center">PA</span>
           </div>
-        ))}
-      </div>
+
+          {table.rows.map((row, index) => (
+            <div key={row.team.id}>
+              <StandingRowView row={row} leader={index === 0} cutoff={cutoff} />
+              {cutoff !== null && row.position === cutoff ? (
+                <div className="mx-3.5 mt-2 h-px bg-hair" />
+              ) : null}
+            </div>
+          ))}
+        </section>
+      ))}
 
       {note ? (
         <p className="rounded-tile bg-fill p-4 text-xs-plus leading-relaxed text-dim text-pretty">

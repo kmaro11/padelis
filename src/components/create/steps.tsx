@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import {
   FORMAT_DESCRIPTION,
   FORMAT_LABEL,
+  GROUPS_FINALS_TEAMS,
   type TournamentFormat,
 } from "@/lib/types";
 import { cn } from "../ui/cn";
@@ -91,6 +92,7 @@ const FORMATS: TournamentFormat[] = [
   "round-robin",
   "placement",
   "final-four",
+  "groups-finals",
 ];
 
 export function FormatCards({
@@ -106,7 +108,10 @@ export function FormatCards({
     <div className="flex flex-col gap-3">
       {FORMATS.map((format) => {
         const selected = format === value;
-        const disabled = format === "final-four" && teamCount < 4;
+        const disabled =
+          (format === "final-four" && teamCount < 4) ||
+          // dvi grupės po keturias — kitokio komandų skaičiaus formatas nepriima
+          (format === "groups-finals" && teamCount !== GROUPS_FINALS_TEAMS);
 
         return (
           <button

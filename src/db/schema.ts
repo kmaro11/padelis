@@ -19,6 +19,7 @@ export const tournamentFormat = pgEnum("tournament_format", [
   "round-robin",
   "placement",
   "final-four",
+  "groups-finals",
 ]);
 
 export const tournamentStatus = pgEnum("tournament_status", [
@@ -92,6 +93,11 @@ export const teams = pgTable(
     /** įvedimo eilė (Team 1, Team 2, ...) — stabilus rikiavimas */
     seed: smallint("seed").notNull(),
     /**
+     * Grupė "Grupės + Finalai" formate ("A" / "B"), burtais. Kituose
+     * formatuose null — grupių nėra.
+     */
+    group: text("group"),
+    /**
      * Komandą sudarantys žaidėjai. Nullable, nes seni turnyrai sukurti dar
      * neturint žaidėjų sąrašo, o svečią galima suvesti ir be įrašo `players`.
      * `set null` — ištrynus žaidėją komanda ir jos rungtynės išlieka.
@@ -114,6 +120,10 @@ export const teams = pgTable(
     index("teams_player2_idx").on(table.player2Id),
     check("teams_name_len", sql`char_length(btrim(${table.name})) between 1 and 60`),
     check("teams_seed_positive", sql`${table.seed} >= 1`),
+    check(
+      "teams_group_valid",
+      sql`${table.group} is null or ${table.group} in ('A', 'B')`,
+    ),
     // tas pats žmogus negali žaisti pats su savimi
     check(
       "teams_distinct_players",
