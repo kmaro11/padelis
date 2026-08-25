@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Screen } from "@/components/layout/AppShell";
 import { BackLink } from "@/components/tournament/BackLink";
 import { FinalPlacings } from "@/components/tournament/FinalPlacings";
+import { TeamName } from "@/components/tournament/TeamName";
 import { cn } from "@/components/ui/cn";
 import { getTournament } from "@/db/queries";
 import {
@@ -25,7 +26,11 @@ export default async function StandingsPage({
   const tournament = await getTournament(id);
   if (!tournament) notFound();
 
-  const groups = tournament.format === "groups-finals";
+  // Formato vien neužtenka: jei burtai neįvyko (senas turnyras, nepritaikyta
+  // migracija), grupių nėra — tada geriau viena lentelė nei dvi tuščios.
+  const groups =
+    tournament.format === "groups-finals" &&
+    tournament.teams.some((team) => team.group !== null);
 
   /**
    * "Grupės + Finalai" — atskira lentelė kiekvienai grupei; kitur viena
@@ -158,14 +163,13 @@ function StandingRowView({
       >
         {row.position}
       </span>
-      <span
+      <TeamName
+        name={row.team.name}
         className={cn(
-          "truncate text-base tracking-snug",
+          "text-base tracking-snug",
           promoted ? "font-semibold" : "font-medium",
         )}
-      >
-        {row.team.name}
-      </span>
+      />
       <span className="text-center text-[14px] font-semibold">{row.wins}</span>
       <Muted leader={leader}>{row.losses}</Muted>
       <Muted leader={leader}>{row.pointsFor}</Muted>

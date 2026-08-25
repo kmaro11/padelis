@@ -7,6 +7,7 @@ import {
   GroupsBracket,
   type SeedMap,
 } from "@/components/tournament/GroupsBracket";
+import { TeamName } from "@/components/tournament/TeamName";
 import { cn } from "@/components/ui/cn";
 import { getTournament } from "@/db/queries";
 import { teamsInGroup } from "@/lib/schedule";
@@ -278,11 +279,20 @@ function BracketRow({
     >
       <span className="flex min-w-0 items-center gap-1.5">
         {seed ? (
-          <span className={cn("text-2xs", winner ? "text-gold" : "text-dim")}>
+          <span
+            className={cn(
+              "shrink-0 text-2xs",
+              winner ? "text-gold" : "text-dim",
+            )}
+          >
             {seed}
           </span>
         ) : null}
-        <span className="truncate">{name ?? "Winner TBD"}</span>
+        {name ? (
+          <TeamName name={name} />
+        ) : (
+          <span className="truncate">Winner TBD</span>
+        )}
       </span>
       <span className={cn(score === undefined && "text-dim")}>
         {score ?? "–"}

@@ -5,6 +5,7 @@ import { Check, Pencil, X } from "lucide-react";
 
 import { renameTeamAction } from "@/app/actions/tournaments";
 import { cn } from "@/components/ui/cn";
+import { TeamName } from "./TeamName";
 import { initials } from "@/lib/tournament-view";
 import type { StandingRow, Team } from "@/lib/types";
 
@@ -116,9 +117,9 @@ function TeamRow({
         </>
       ) : (
         <>
-          <span className="flex-1">
-            <span className="block text-base font-medium">{team.name}</span>
-            <span className="mt-0.5 block text-xs text-dim">
+          <span className="flex min-w-0 flex-1 flex-col">
+            <TeamName name={team.name} className="text-base font-medium" />
+            <span className="mt-0.5 text-xs text-dim">
               {record ? `${record.wins}W · ${record.losses}L` : "No matches"}
             </span>
           </span>

@@ -4,7 +4,9 @@ import { Screen } from "@/components/layout/AppShell";
 import { BackLink } from "@/components/tournament/BackLink";
 import { TeamList } from "@/components/tournament/TeamList";
 import { getTournament } from "@/db/queries";
+import { teamsInGroup } from "@/lib/schedule";
 import { computeStandings } from "@/lib/standings";
+import { GROUPS } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,10 @@ export default async function TeamsPage({
   const { id } = await params;
   const tournament = await getTournament(id);
   if (!tournament) notFound();
+
+  const groups =
+    tournament.format === "groups-finals" &&
+    tournament.teams.some((team) => team.group !== null);
 
   const records = Object.fromEntries(
     computeStandings(tournament.teams, tournament.matches).map((row) => [
@@ -35,11 +41,26 @@ export default async function TeamsPage({
         </p>
       </header>
 
-      <TeamList
-        tournamentId={tournament.id}
-        teams={tournament.teams}
-        records={records}
-      />
+      {groups ? (
+        GROUPS.map((group) => (
+          <section key={group}>
+            <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-badge text-dim">
+              Grupė {group}
+            </p>
+            <TeamList
+              tournamentId={tournament.id}
+              teams={teamsInGroup(tournament.teams, group)}
+              records={records}
+            />
+          </section>
+        ))
+      ) : (
+        <TeamList
+          tournamentId={tournament.id}
+          teams={tournament.teams}
+          records={records}
+        />
+      )}
     </Screen>
   );
 }

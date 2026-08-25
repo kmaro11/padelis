@@ -1,4 +1,5 @@
 import { cn } from "@/components/ui/cn";
+import { TeamName } from "./TeamName";
 import { teamName } from "@/lib/tournament-view";
 import {
   FIFTH_PLACE,
@@ -240,11 +241,20 @@ function Row({
     >
       <span className="flex min-w-0 items-center gap-1.5">
         {seed ? (
-          <span className={cn("text-2xs", winner ? "text-gold" : "text-dim")}>
+          <span
+            className={cn(
+              "shrink-0 text-2xs",
+              winner ? "text-gold" : "text-dim",
+            )}
+          >
             {seed}
           </span>
         ) : null}
-        <span className="truncate">{name ?? "Winner TBD"}</span>
+        {name ? (
+          <TeamName name={name} />
+        ) : (
+          <span className="truncate">Winner TBD</span>
+        )}
       </span>
       <span className={cn(score === undefined && "text-dim")}>
         {score ?? "–"}

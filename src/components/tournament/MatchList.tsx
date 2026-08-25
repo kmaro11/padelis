@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 
 import { saveScoreAction } from "@/app/actions/tournaments";
 import { cn } from "@/components/ui/cn";
+import { TeamName } from "./TeamName";
 import { isPlayed } from "@/lib/standings";
 import {
   activeRoundIndex,
@@ -408,7 +409,10 @@ function ScoreInput({
 
   return (
     <label className="flex items-center gap-3">
-      <span className="flex-1 text-md font-semibold tracking-snug">{name}</span>
+      <TeamName
+        name={name}
+        className="flex-1 text-md font-semibold tracking-snug"
+      />
       <input
         ref={ref}
         inputMode="numeric"
@@ -443,15 +447,14 @@ function ScoreRow({
     <div
       className={cn("flex items-center gap-3 py-[3px]", !winner && "opacity-45")}
     >
-      <span
+      <TeamName
+        name={name}
         className={cn(
           "flex-1 text-[15.5px]",
           winner ? "font-semibold" : "font-medium",
         )}
-      >
-        {name ?? "—"}
-      </span>
-      <span className="text-2xl font-bold leading-none">{score}</span>
+      />
+      <span className="shrink-0 text-2xl font-bold leading-none">{score}</span>
     </div>
   );
 }
@@ -459,9 +462,11 @@ function ScoreRow({
 function PendingRow({ name }: { name: string | null }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex-1 text-[15.5px] font-medium">
-        {name ?? "Winner TBD"}
-      </span>
+      {name ? (
+        <TeamName name={name} className="flex-1 text-[15.5px] font-medium" />
+      ) : (
+        <span className="flex-1 text-[15.5px] font-medium">Winner TBD</span>
+      )}
       <span className="h-10 w-11 shrink-0 rounded-field bg-fill" />
     </div>
   );
