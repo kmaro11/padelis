@@ -10,6 +10,7 @@ import {
 
 import { Screen } from "@/components/layout/AppShell";
 import { DeleteTournament } from "@/components/tournament/DeleteTournament";
+import { RatedBadge } from "@/components/tournament/RatedBadge";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -38,9 +39,12 @@ export default async function TournamentPage({ params }: PageProps<"/tournament/
         <h1 className="mt-2 text-5xl font-bold tracking-display">
           {tournament.name}
         </h1>
-        <p className="mt-2 text-[14px] text-dim">
-          {FORMAT_LABEL[tournament.format]} · {tournament.teams.length} teams
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className="text-[14px] text-dim">
+            {FORMAT_LABEL[tournament.format]} · {tournament.teams.length} teams
+          </p>
+          <RatedBadge rated={tournament.rated} />
+        </div>
       </header>
 
       <section className="rounded-[24px] bg-fill p-5">

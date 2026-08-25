@@ -174,10 +174,13 @@ export default async function BracketPage({
             <span className="w-5 text-sm font-bold text-dim">
               {unpaired.position}
             </span>
-            <span className="flex-1 text-base font-medium">
-              {unpaired.team.name}
+            <TeamName
+              name={unpaired.team.name}
+              className="flex-1 text-base font-medium"
+            />
+            <span className="shrink-0 text-xs text-dim">
+              keeps Round Robin rank
             </span>
-            <span className="text-xs text-dim">keeps Round Robin rank</span>
           </div>
         </section>
       ) : null}

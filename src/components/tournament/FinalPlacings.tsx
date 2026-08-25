@@ -1,4 +1,5 @@
 import { cn } from "@/components/ui/cn";
+import { TeamName } from "./TeamName";
 import { computeFinalPlacings } from "@/lib/standings";
 import { ordinal } from "@/lib/schedule";
 import type { FinalPlacing } from "@/lib/standings";
@@ -52,17 +53,16 @@ export function FinalPlacings({ tournament }: { tournament: Tournament }) {
             >
               {placing.position}
             </span>
-            <span
+            <TeamName
+              name={placing.team.name}
               className={cn(
-                "truncate text-base tracking-snug",
+                "text-base tracking-snug",
                 placing.position <= 3 ? "font-semibold" : "font-medium",
               )}
-            >
-              {placing.team.name}
-            </span>
+            />
             <span
               className={cn(
-                "text-2xs",
+                "shrink-0 text-2xs",
                 placing.position === 1 ? "text-on-ink-dim" : "text-dim",
               )}
             >
