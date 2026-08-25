@@ -251,12 +251,12 @@ function Row({
           </span>
         ) : null}
         {name ? (
-          <TeamName name={name} />
+          <TeamName name={name} maxWidth={116} />
         ) : (
           <span className="truncate">Winner TBD</span>
         )}
       </span>
-      <span className={cn(score === undefined && "text-dim")}>
+      <span className={cn("shrink-0 pl-2", score === undefined && "text-dim")}>
         {score ?? "–"}
       </span>
     </div>
