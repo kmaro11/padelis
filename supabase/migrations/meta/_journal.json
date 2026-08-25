@@ -64,6 +64,20 @@
       "when": 1787664051698,
       "tag": "0008_wise_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787666124681,
+      "tag": "0009_woozy_master_mold",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787666124682,
+      "tag": "0010_ratings_rls",
+      "breakpoints": true
     }
   ]
 }

@@ -57,6 +57,20 @@ export interface Player {
   name: string;
 }
 
+/** Žaidėjo eilutė reitingų lentelėje (§9). */
+export interface RatingRow {
+  player: Player;
+  rating: number;
+  tournamentsPlayed: number;
+  lastPlayedAt: string | null;
+  /** §9 — po 28 dienų žymima vizualiai; reitingas nekeičiamas */
+  stale: boolean;
+  /** pokytis paskutiniame turnyre */
+  lastChange: number | null;
+  /** §9 — į viešą lentelę patenka nuo 4 turnyrų */
+  ranked: boolean;
+}
+
 /** Ką apie komandą žino create flow'as prieš įrašymą į DB. */
 export interface TeamDraft {
   name: string;

@@ -4,13 +4,30 @@ import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 
 import { db } from "./index";
 import { toPlayer, toTournament } from "./mappers";
-import { matches, players, settings, teams, tournaments } from "./schema";
+import {
+  matches,
+  players,
+  ratingChanges,
+  settings,
+  teams,
+  tournamentEntries,
+  tournaments,
+} from "./schema";
 import type { SettingsRow } from "./schema";
+import {
+  BASE_RATING,
+  isStale,
+  MIN_TOURNAMENTS_PUBLIC,
+  replay,
+  type Pair,
+  type RatedTournament,
+} from "@/lib/rating";
 import { advanceFormat, createTournament } from "@/lib/schedule";
 import { isPlayed } from "@/lib/standings";
 import type {
   MatchScore,
   Player,
+  RatingRow,
   TeamDraft,
   Tournament,
   TournamentFormat,
@@ -194,6 +211,8 @@ export async function saveMatchScore(
   matchId: string,
   score: MatchScore,
 ): Promise<void> {
+  let touched = false;
+
   await db.transaction(async (tx) => {
     const before = await loadForUpdate(tx, tournamentId);
     if (!before) return;
@@ -278,7 +297,13 @@ export async function saveMatchScore(
       .update(tournaments)
       .set({ status })
       .where(eq(tournaments.id, tournamentId));
+
+    // reitingai skaičiuojami tik iš užbaigtų turnyrų (§4), bet taisant jau
+    // užbaigto turnyro rezultatą perskaičiuoti reikia ir tada
+    touched = before.rated && (status === "completed" || before.status === "completed");
   });
+
+  if (touched) await recomputeRatings();
 }
 
 export async function createPlayer(name: string): Promise<Player> {
@@ -334,8 +359,131 @@ export async function updateSettings(
   await db.update(settings).set(patch).where(eq(settings.id, 1));
 }
 
+/* ---------------------------------------------------------------- reitingai */
+
+/**
+ * Perleidžia VISUS reitinguojamus, užbaigtus turnyrus datos tvarka nuo 1000
+ * ir perrašo `players.rating`, `tournament_entries` bei `rating_changes`.
+ *
+ * Tai vienintelis tiesos šaltinis: ištrynus turnyrą ar pataisius rezultatą
+ * pakanka paleisti iš naujo — reitingai visada atitinka duomenis, nieko
+ * „atsukinėti" nereikia. Duomenų kiekis mažas (dešimtys turnyrų), tad
+ * pilnas perskaičiavimas pigesnis už bet kokią inkrementinę logiką.
+ */
+export async function recomputeRatings(): Promise<void> {
+  const rows = await db
+    .select()
+    .from(tournaments)
+    .where(and(eq(tournaments.rated, true), eq(tournaments.status, "completed")))
+    .orderBy(asc(tournaments.date));
+
+  const ids = rows.map((row) => row.id);
+
+  const [teamRows, matchRows] = ids.length
+    ? await Promise.all([
+        db.select().from(teams).where(inArray(teams.tournamentId, ids)),
+        db.select().from(matches).where(inArray(matches.tournamentId, ids)),
+      ])
+    : [[], []];
+
+  const pairOf = new Map<string, Pair | null>(
+    teamRows.map((team) => [
+      team.id,
+      team.player1Id && team.player2Id
+        ? ([team.player1Id, team.player2Id] as Pair)
+        : null,
+    ]),
+  );
+
+  const input: RatedTournament[] = rows.map((row) => ({
+    id: row.id,
+    date: row.date,
+    scoreWeightEnabled: row.scoreWeightEnabled,
+    // §3.6 nėra §8 modelyje — variklis palaiko, DB stulpelio kol kas nėra
+    finalWeightEnabled: false,
+    matches: matchRows
+      .filter((match) => match.tournamentId === row.id)
+      .map((match) => ({
+        id: match.id,
+        home: match.homeTeamId ? (pairOf.get(match.homeTeamId) ?? null) : null,
+        away: match.awayTeamId ? (pairOf.get(match.awayTeamId) ?? null) : null,
+        homeGames: match.homeScore,
+        awayGames: match.awayScore,
+        isFinal: match.stage === "final",
+      })),
+  }));
+
+  const result = replay(input);
+
+  await db.transaction(async (tx) => {
+    await tx.delete(ratingChanges);
+    await tx.delete(tournamentEntries);
+
+    // visiems iš naujo — ir tiems, kurie nebeturi nė vieno turnyro
+    await tx
+      .update(players)
+      .set({ rating: BASE_RATING, tournamentsPlayed: 0, lastPlayedAt: null });
+
+    for (const [playerId, state] of result.players) {
+      await tx
+        .update(players)
+        .set({
+          rating: state.rating,
+          tournamentsPlayed: state.tournamentsPlayed,
+          lastPlayedAt: state.lastPlayedAt,
+        })
+        .where(eq(players.id, playerId));
+    }
+
+    if (result.entries.length > 0) {
+      await tx.insert(tournamentEntries).values(result.entries);
+    }
+
+    if (result.changes.length > 0) {
+      await tx.insert(ratingChanges).values(result.changes);
+    }
+  });
+}
+
+export async function listRatings(): Promise<RatingRow[]> {
+  const [playerRows, entryRows] = await Promise.all([
+    db.select().from(players).orderBy(desc(players.rating), asc(players.name)),
+    // paskutinis turnyras žaidėjui — iš jo rodom pokytį (+12 / −8)
+    db
+      .select({
+        playerId: tournamentEntries.playerId,
+        ratingStart: tournamentEntries.ratingStart,
+        ratingEnd: tournamentEntries.ratingEnd,
+        date: tournaments.date,
+      })
+      .from(tournamentEntries)
+      .innerJoin(
+        tournaments,
+        eq(tournaments.id, tournamentEntries.tournamentId),
+      )
+      .orderBy(asc(tournaments.date)),
+  ]);
+
+  /** eilutės surikiuotos pagal datą — vėlesnė perrašo ankstesnę */
+  const latest = new Map<string, number>();
+  for (const entry of entryRows) {
+    latest.set(entry.playerId, entry.ratingEnd - entry.ratingStart);
+  }
+
+  return playerRows.map((row) => ({
+    player: toPlayer(row),
+    rating: row.rating,
+    tournamentsPlayed: row.tournamentsPlayed,
+    lastPlayedAt: row.lastPlayedAt,
+    stale: isStale(row.lastPlayedAt),
+    lastChange: latest.get(row.id) ?? null,
+    ranked: row.tournamentsPlayed >= MIN_TOURNAMENTS_PUBLIC,
+  }));
+}
+
 export async function deleteTournament(id: string): Promise<void> {
   await db.delete(tournaments).where(eq(tournaments.id, id));
+  await recomputeRatings();
 }
 
 /** Visi duomenys — naudojama Settings ekrano "Delete all data". */

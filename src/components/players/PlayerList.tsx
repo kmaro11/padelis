@@ -6,14 +6,28 @@ import { Check, Pencil, Trash2, X } from "lucide-react";
 import { deletePlayerAction, renamePlayerAction } from "@/app/actions/players";
 import { cn } from "@/components/ui/cn";
 import { initials } from "@/lib/tournament-view";
-import type { Player } from "@/lib/types";
+import type { Player, RatingRow } from "@/lib/types";
 import { AddPlayerRow } from "./AddPlayerRow";
 
-function byName(a: Player, b: Player): number {
-  return a.name.localeCompare(b.name);
+/** Reitingas mažėjančiai, o susilyginus — pagal vardą. */
+function byRating(a: RatingRow, b: RatingRow): number {
+  return b.rating - a.rating || a.player.name.localeCompare(b.player.name);
 }
 
-export function PlayerList({ players }: { players: Player[] }) {
+/** Naujai pridėtas žaidėjas — 1000, dar be turnyrų (§7). */
+function freshRow(player: Player): RatingRow {
+  return {
+    player,
+    rating: 1000,
+    tournamentsPlayed: 0,
+    lastPlayedAt: null,
+    stale: false,
+    lastChange: null,
+    ranked: false,
+  };
+}
+
+export function PlayerList({ players }: { players: RatingRow[] }) {
   const [list, setList] = useState(players);
   const [editing, setEditing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -22,37 +36,42 @@ export function PlayerList({ players }: { players: Player[] }) {
     <div className="flex flex-col">
       <AddPlayerRow
         onAdded={(player) =>
-          setList((current) => [...current, player].sort(byName))
+          setList((current) => [...current, freshRow(player)].sort(byRating))
         }
       />
 
-      {list.map((player) => (
+      {list.map((row, index) => (
         <PlayerRow
-          key={player.id}
-          player={player}
-          editing={editing === player.id}
-          deleting={deleting === player.id}
+          key={row.player.id}
+          row={row}
+          rank={row.ranked ? index + 1 : null}
+          editing={editing === row.player.id}
+          deleting={deleting === row.player.id}
           onEdit={() => {
             setDeleting(null);
-            setEditing(player.id);
+            setEditing(row.player.id);
           }}
           onDone={() => setEditing(null)}
           onRenamed={(name) =>
             setList((current) =>
               current
                 .map((item) =>
-                  item.id === player.id ? { ...item, name } : item,
+                  item.player.id === row.player.id
+                    ? { ...item, player: { ...item.player, name } }
+                    : item,
                 )
-                .sort(byName),
+                .sort(byRating),
             )
           }
           onDeletePrompt={() => {
             setEditing(null);
-            setDeleting(player.id);
+            setDeleting(row.player.id);
           }}
           onDeleteCancel={() => setDeleting(null)}
           onDeleted={() =>
-            setList((current) => current.filter((item) => item.id !== player.id))
+            setList((current) =>
+              current.filter((item) => item.player.id !== row.player.id),
+            )
           }
         />
       ))}
@@ -61,7 +80,8 @@ export function PlayerList({ players }: { players: Player[] }) {
 }
 
 function PlayerRow({
-  player,
+  row,
+  rank,
   editing,
   deleting,
   onEdit,
@@ -71,7 +91,8 @@ function PlayerRow({
   onDeleteCancel,
   onDeleted,
 }: {
-  player: Player;
+  row: RatingRow;
+  rank: number | null;
   editing: boolean;
   deleting: boolean;
   onEdit: () => void;
@@ -81,19 +102,19 @@ function PlayerRow({
   onDeleteCancel: () => void;
   onDeleted: () => void;
 }) {
-  const [name, setName] = useState(player.name);
+  const [name, setName] = useState(row.player.name);
   const [pending, startTransition] = useTransition();
 
   const save = () => {
     const clean = name.trim();
-    if (clean.length === 0 || clean === player.name) {
-      setName(player.name);
+    if (clean.length === 0 || clean === row.player.name) {
+      setName(row.player.name);
       onDone();
       return;
     }
 
     startTransition(async () => {
-      await renamePlayerAction(player.id, clean);
+      await renamePlayerAction(row.player.id, clean);
       onRenamed(clean);
       onDone();
     });
@@ -101,15 +122,19 @@ function PlayerRow({
 
   const remove = () => {
     startTransition(async () => {
-      await deletePlayerAction(player.id);
+      await deletePlayerAction(row.player.id);
       onDeleted();
     });
   };
 
   return (
     <div className="flex items-center gap-3.5 border-b border-hair py-3.5">
+      <span className="w-5 shrink-0 text-center text-sm font-bold text-gold">
+        {rank ?? <span className="text-faint">–</span>}
+      </span>
+
       <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-fill text-sm font-semibold text-dim">
-        {initials(editing ? name : player.name)}
+        {initials(editing ? name : row.player.name)}
       </span>
 
       {editing ? (
@@ -122,7 +147,7 @@ function PlayerRow({
             onKeyDown={(event) => {
               if (event.key === "Enter") save();
               if (event.key === "Escape") {
-                setName(player.name);
+                setName(row.player.name);
                 onDone();
               }
             }}
@@ -132,7 +157,7 @@ function PlayerRow({
             type="button"
             aria-label="Cancel"
             onClick={() => {
-              setName(player.name);
+              setName(row.player.name);
               onDone();
             }}
             className="flex size-9 items-center justify-center rounded-full text-glyph active:bg-fill"
@@ -155,7 +180,7 @@ function PlayerRow({
       ) : deleting ? (
         <>
           <span className="flex-1 text-base text-dim">
-            Remove {player.name}?
+            Remove {row.player.name}?
           </span>
           <button
             type="button"
@@ -167,7 +192,7 @@ function PlayerRow({
           </button>
           <button
             type="button"
-            aria-label={`Confirm delete ${player.name}`}
+            aria-label={`Confirm delete ${row.player.name}`}
             onClick={remove}
             disabled={pending}
             className={cn(
@@ -180,10 +205,43 @@ function PlayerRow({
         </>
       ) : (
         <>
-          <span className="flex-1 text-base font-medium">{player.name}</span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span
+              className={cn(
+                "truncate text-base font-medium",
+                row.stale && "text-dim",
+              )}
+            >
+              {row.player.name}
+            </span>
+            <span className="mt-0.5 text-xs text-dim">
+              {row.tournamentsPlayed === 0
+                ? "Dar nežaidė"
+                : `${row.tournamentsPlayed} ${row.tournamentsPlayed === 1 ? "turnyras" : "turnyrai"}`}
+              {row.ranked ? null : row.tournamentsPlayed > 0 ? " · nereitinguojamas" : null}
+              {row.stale ? " · pasenęs" : null}
+            </span>
+          </span>
+
+          <span className="flex shrink-0 flex-col items-end">
+            <span className="text-base font-semibold tabular-nums">
+              {row.rating}
+            </span>
+            {row.lastChange !== null && row.lastChange !== 0 ? (
+              <span
+                className={cn(
+                  "mt-0.5 text-xs tabular-nums",
+                  row.lastChange > 0 ? "text-gold" : "text-dim",
+                )}
+              >
+                {row.lastChange > 0 ? "+" : "−"}
+                {Math.abs(row.lastChange)}
+              </span>
+            ) : null}
+          </span>
           <button
             type="button"
-            aria-label={`Rename ${player.name}`}
+            aria-label={`Rename ${row.player.name}`}
             onClick={onEdit}
             className="flex size-9 items-center justify-center rounded-full text-faint active:bg-fill"
           >
@@ -191,7 +249,7 @@ function PlayerRow({
           </button>
           <button
             type="button"
-            aria-label={`Delete ${player.name}`}
+            aria-label={`Delete ${row.player.name}`}
             onClick={onDeletePrompt}
             className="flex size-9 items-center justify-center rounded-full text-faint active:bg-fill"
           >

@@ -4,8 +4,11 @@ import {
   check,
   date,
   index,
+  integer,
   pgEnum,
   pgTable,
+  primaryKey,
+  real,
   smallint,
   text,
   timestamp,
@@ -53,6 +56,10 @@ export const tournaments = pgTable(
      * skaičiuojami į žaidėjų reitingą. Seni turnyrai lieka `false`.
      */
     rated: boolean("rated").notNull().default(false),
+    /** §3.4 — ar Δ dauginamas iš rezultato daugiklio. Numatytai išjungta. */
+    scoreWeightEnabled: boolean("score_weight_enabled")
+      .notNull()
+      .default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -72,12 +79,21 @@ export const players = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
+    /**
+     * Elo reitingas. Visi šie laukai yra IŠVESTINIAI — juos perrašo
+     * `recomputeRatings()`, perleisdamas visus turnyrus nuo 1000.
+     * Ranka nekeisti.
+     */
+    rating: integer("rating").notNull().default(1000),
+    tournamentsPlayed: smallint("tournaments_played").notNull().default(0),
+    lastPlayedAt: date("last_played_at"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
     index("players_name_idx").on(table.name),
+    index("players_rating_idx").on(table.rating.desc()),
     check("players_name_len", sql`char_length(btrim(${table.name})) between 1 and 60`),
   ],
 );
@@ -183,6 +199,56 @@ export const matches = pgTable(
       "matches_distinct_teams",
       sql`${table.homeTeamId} is null or ${table.homeTeamId} is distinct from ${table.awayTeamId}`,
     ),
+  ],
+);
+
+/**
+ * Užšaldyti reitingai (§4): su kokiu reitingu ir K žaidėjas pradėjo turnyrą
+ * ir kuo baigė. Perrašoma kiekvieno perskaičiavimo metu.
+ */
+export const tournamentEntries = pgTable(
+  "tournament_entries",
+  {
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    ratingStart: integer("rating_start").notNull(),
+    kFactor: real("k_factor").notNull(),
+    ratingEnd: integer("rating_end").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tournamentId, table.playerId] }),
+    index("tournament_entries_player_idx").on(table.playerId),
+  ],
+);
+
+/**
+ * Audito pėdsakas — po įrašą žaidėjui už kiekvieną mačą (§8). Be jo
+ * neįmanoma paaiškinti, kodėl reitingas pasikeitė.
+ */
+export const ratingChanges = pgTable(
+  "rating_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    expectedScore: real("expected_score").notNull(),
+    weight: real("weight").notNull(),
+    delta: smallint("delta").notNull(),
+  },
+  (table) => [
+    index("rating_changes_player_idx").on(table.playerId),
+    index("rating_changes_tournament_idx").on(table.tournamentId),
   ],
 );
 
