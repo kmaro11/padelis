@@ -1,13 +1,17 @@
 import { CreateFlow } from "@/components/create/CreateFlow";
-import { getSettings } from "@/db/queries";
+import { getSettings, listPlayers } from "@/db/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function CreatePage() {
-  const settings = await getSettings();
+  const [settings, players] = await Promise.all([
+    getSettings(),
+    listPlayers(),
+  ]);
 
   return (
     <CreateFlow
+      players={players}
       defaults={{
         defaultTeams: settings.defaultTeams,
         defaultFormat: settings.defaultFormat,

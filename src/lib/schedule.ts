@@ -1,5 +1,11 @@
 import { computeStandings, loserId, roundRobinComplete, winnerId } from "./standings";
-import type { Match, Team, Tournament, TournamentFormat } from "./types";
+import type {
+  Match,
+  Team,
+  TeamDraft,
+  Tournament,
+  TournamentFormat,
+} from "./types";
 
 let counter = 0;
 function nextId(prefix: string): string {
@@ -7,10 +13,12 @@ function nextId(prefix: string): string {
   return `${prefix}-${counter.toString(36)}`;
 }
 
-export function createTeams(names: string[]): Team[] {
-  return names.map((name, index) => ({
+export function createTeams(drafts: TeamDraft[]): Team[] {
+  return drafts.map((draft, index) => ({
     id: nextId("team"),
-    name: name.trim() || `Team ${index + 1}`,
+    name: draft.name.trim() || `Team ${index + 1}`,
+    player1Id: draft.player1Id,
+    player2Id: draft.player2Id,
   }));
 }
 
@@ -217,9 +225,10 @@ export function createTournament(input: {
   date: string;
   format: TournamentFormat;
   courts: number;
-  teamNames: string[];
+  rated: boolean;
+  teams: TeamDraft[];
 }): Tournament {
-  const teams = createTeams(input.teamNames);
+  const teams = createTeams(input.teams);
 
   return {
     id: nextId("tournament"),
@@ -228,6 +237,7 @@ export function createTournament(input: {
     format: input.format,
     status: "draft",
     courts: Math.max(1, input.courts),
+    rated: input.rated,
     teams,
     matches: generateRoundRobin(teams, Math.max(1, input.courts)),
   };

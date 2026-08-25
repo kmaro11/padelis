@@ -8,7 +8,13 @@ import { matches, players, settings, teams, tournaments } from "./schema";
 import type { SettingsRow } from "./schema";
 import { advanceFormat, createTournament } from "@/lib/schedule";
 import { isPlayed } from "@/lib/standings";
-import type { MatchScore, Player, Tournament, TournamentFormat } from "@/lib/types";
+import type {
+  MatchScore,
+  Player,
+  TeamDraft,
+  Tournament,
+  TournamentFormat,
+} from "@/lib/types";
 
 /* ------------------------------------------------------------------ reads */
 
@@ -115,7 +121,8 @@ export interface CreateTournamentInput {
   date: string;
   format: TournamentFormat;
   courts: number;
-  teamNames: string[];
+  rated: boolean;
+  teams: TeamDraft[];
 }
 
 /**
@@ -136,6 +143,7 @@ export async function insertTournament(
         format: draft.format,
         status: draft.status,
         courts: draft.courts,
+        rated: draft.rated,
       })
       .returning({ id: tournaments.id });
 
@@ -146,6 +154,8 @@ export async function insertTournament(
           tournamentId: row.id,
           name: team.name,
           seed: index + 1,
+          player1Id: team.player1Id,
+          player2Id: team.player2Id,
         })),
       )
       .returning({ id: teams.id, seed: teams.seed });

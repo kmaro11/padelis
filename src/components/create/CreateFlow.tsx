@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { parseDate } from "@/lib/date";
-import type { TournamentFormat } from "@/lib/types";
+import type { Player, TeamDraft, TournamentFormat } from "@/lib/types";
 import { Calendar } from "./Calendar";
-import { FormatCards, TeamCountGrid, TeamNameInputs } from "./steps";
+import { FormatCards, RatedCheckbox, TeamCountGrid } from "./steps";
+import { TeamBuilder, type TeamSlots } from "./TeamBuilder";
 
 const STEPS = ["Date", "Teams", "Names", "Format"] as const;
 
@@ -23,19 +24,27 @@ export interface CreateDefaults {
   courts: number;
 }
 
-export function CreateFlow({ defaults }: { defaults: CreateDefaults }) {
+export function CreateFlow({
+  defaults,
+  players: initialPlayers,
+}: {
+  defaults: CreateDefaults;
+  players: Player[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   const [step, setStep] = useState(0);
   const [date, setDate] = useState<string | null>(null);
   const [teamCount, setTeamCount] = useState(defaults.defaultTeams);
-  const [names, setNames] = useState<string[]>(() =>
-    defaultNames(defaults.defaultTeams),
+  const [players, setPlayers] = useState(initialPlayers);
+  const [teams, setTeams] = useState<TeamSlots[]>(() =>
+    emptyTeams(defaults.defaultTeams),
   );
   const [format, setFormat] = useState<TournamentFormat>(
     defaults.defaultFormat,
   );
+  const [rated, setRated] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +73,8 @@ export function CreateFlow({ defaults }: { defaults: CreateDefaults }) {
           date: date as string,
           format,
           courts: defaults.courts,
-          teamNames: names,
+          rated,
+          teams: toDrafts(teams, players),
         });
         setCreatedId(id);
       } catch {
@@ -75,8 +85,12 @@ export function CreateFlow({ defaults }: { defaults: CreateDefaults }) {
 
   const setCount = (count: number) => {
     setTeamCount(count);
-    setNames((current) =>
-      Array.from({ length: count }, (_, index) => current[index] ?? ""),
+    setTeams((current) =>
+      Array.from(
+        { length: count },
+        (_, index) =>
+          current[index] ?? { player1Id: null, player2Id: null },
+      ),
     );
   };
 
@@ -109,6 +123,9 @@ export function CreateFlow({ defaults }: { defaults: CreateDefaults }) {
       {step === 1 ? (
         <>
           <h1 className="text-5xl font-bold tracking-display">How many?</h1>
+          <p className="-mt-2 text-sm text-dim">
+            {teamCount} teams · {teamCount * 2} players
+          </p>
           <TeamCountGrid value={teamCount} onChange={setCount} />
         </>
       ) : null}
@@ -116,12 +133,20 @@ export function CreateFlow({ defaults }: { defaults: CreateDefaults }) {
       {step === 2 ? (
         <>
           <h1 className="text-5xl font-bold tracking-display">Teams</h1>
-          <TeamNameInputs
-            names={names}
-            onChange={(index, name) =>
-              setNames((current) =>
+          <TeamBuilder
+            teams={teams}
+            players={players}
+            onChange={(index, slots) =>
+              setTeams((current) =>
                 current.map((item, position) =>
-                  position === index ? name : item,
+                  position === index ? slots : item,
+                ),
+              )
+            }
+            onPlayerCreated={(player) =>
+              setPlayers((current) =>
+                [...current, player].sort((a, b) =>
+                  a.name.localeCompare(b.name),
                 ),
               )
             }
@@ -137,6 +162,7 @@ export function CreateFlow({ defaults }: { defaults: CreateDefaults }) {
             onChange={setFormat}
             teamCount={teamCount}
           />
+          <RatedCheckbox checked={rated} onChange={setRated} />
         </>
       ) : null}
 
@@ -186,8 +212,30 @@ function SuccessScreen({ tournamentId }: { tournamentId: string }) {
   );
 }
 
-function defaultNames(count: number): string[] {
-  return Array.from({ length: count }, () => "");
+function emptyTeams(count: number): TeamSlots[] {
+  return Array.from({ length: count }, () => ({
+    player1Id: null,
+    player2Id: null,
+  }));
+}
+
+/**
+ * Komandos pavadinimas kildinamas iš žaidėjų ("Jonas / Petras"), o ID
+ * įrašomi atskirai — pagal juos vėliau traukiama žaidėjo statistika.
+ * Nepasirinkus nė vieno lieka tuščias vardas — `createTeams` duos "Team N".
+ */
+function toDrafts(teams: TeamSlots[], players: Player[]): TeamDraft[] {
+  const byId = new Map(players.map((player) => [player.id, player.name]));
+
+  return teams.map((team) => ({
+    name: [team.player1Id, team.player2Id]
+      .map((id) => (id ? byId.get(id) : undefined))
+      .filter(Boolean)
+      .join(" / ")
+      .slice(0, 60),
+    player1Id: team.player1Id,
+    player2Id: team.player2Id,
+  }));
 }
 
 /** Handoff'e pavadinimo žingsnio nėra — vardas kildinamas iš datos. */

@@ -12,11 +12,24 @@ export type MatchStage =
 export interface Team {
   id: string;
   name: string;
+  /**
+   * Komandą sudarantys žaidėjai. null — senas turnyras arba svečias, kurio
+   * `players` sąraše nėra; tokiu atveju lieka tik `name`.
+   */
+  player1Id: string | null;
+  player2Id: string | null;
 }
 
 export interface Player {
   id: string;
   name: string;
+}
+
+/** Ką apie komandą žino create flow'as prieš įrašymą į DB. */
+export interface TeamDraft {
+  name: string;
+  player1Id: string | null;
+  player2Id: string | null;
 }
 
 export interface MatchScore {
@@ -45,6 +58,8 @@ export interface Tournament {
   format: TournamentFormat;
   status: TournamentStatus;
   courts: number;
+  /** "Trečiadienio pasižaidimai su reitingais" */
+  rated: boolean;
   teams: Team[];
   matches: Match[];
 }

@@ -157,8 +157,23 @@ export function plural(count: number, one: string, many: string): string {
 }
 
 export function initials(name: string): string {
+  // "Jonas Jonaitis / Petras Petraitis" -> JP: poroje imam po raidę iš
+  // kiekvieno žaidėjo, o ne dvi iš pirmojo vardo.
+  const sides = name
+    .split("/")
+    .map((side) => side.trim())
+    .filter(Boolean);
+
+  if (sides.length > 1) {
+    return sides
+      .slice(0, 2)
+      .map((side) => side[0])
+      .join("")
+      .toUpperCase();
+  }
+
   const parts = name
-    .split(/[\s/]+/)
+    .split(/\s+/)
     .map((part) => part.trim())
     .filter(Boolean);
 

@@ -47,6 +47,11 @@ export const tournaments = pgTable(
     format: tournamentFormat("format").notNull().default("round-robin"),
     status: tournamentStatus("status").notNull().default("draft"),
     courts: smallint("courts").notNull().default(1),
+    /**
+     * "Trečiadienio pasižaidimai su reitingais" — ar turnyro rezultatai
+     * skaičiuojami į žaidėjų reitingą. Seni turnyrai lieka `false`.
+     */
+    rated: boolean("rated").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -86,6 +91,17 @@ export const teams = pgTable(
     name: text("name").notNull(),
     /** įvedimo eilė (Team 1, Team 2, ...) — stabilus rikiavimas */
     seed: smallint("seed").notNull(),
+    /**
+     * Komandą sudarantys žaidėjai. Nullable, nes seni turnyrai sukurti dar
+     * neturint žaidėjų sąrašo, o svečią galima suvesti ir be įrašo `players`.
+     * `set null` — ištrynus žaidėją komanda ir jos rungtynės išlieka.
+     */
+    player1Id: uuid("player1_id").references(() => players.id, {
+      onDelete: "set null",
+    }),
+    player2Id: uuid("player2_id").references(() => players.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -93,8 +109,16 @@ export const teams = pgTable(
   (table) => [
     unique("teams_tournament_seed_key").on(table.tournamentId, table.seed),
     index("teams_tournament_idx").on(table.tournamentId, table.seed),
+    // žaidėjo statistika per visus turnyrus: where player1_id = x or player2_id = x
+    index("teams_player1_idx").on(table.player1Id),
+    index("teams_player2_idx").on(table.player2Id),
     check("teams_name_len", sql`char_length(btrim(${table.name})) between 1 and 60`),
     check("teams_seed_positive", sql`${table.seed} >= 1`),
+    // tas pats žmogus negali žaisti pats su savimi
+    check(
+      "teams_distinct_players",
+      sql`${table.player1Id} is null or ${table.player1Id} is distinct from ${table.player2Id}`,
+    ),
   ],
 );
 
@@ -194,6 +218,20 @@ export const teamsRelations = relations(teams, ({ one }) => ({
     fields: [teams.tournamentId],
     references: [tournaments.id],
   }),
+  player1: one(players, {
+    fields: [teams.player1Id],
+    references: [players.id],
+    relationName: "player1",
+  }),
+  player2: one(players, {
+    fields: [teams.player2Id],
+    references: [players.id],
+    relationName: "player2",
+  }),
+}));
+
+export const playersRelations = relations(players, ({ many }) => ({
+  teams: many(teams),
 }));
 
 export const matchesRelations = relations(matches, ({ one }) => ({

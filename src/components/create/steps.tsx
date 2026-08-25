@@ -51,33 +51,39 @@ export function TeamCountGrid({
   );
 }
 
-export function TeamNameInputs({
-  names,
+/** Ar turnyras skaičiuojamas į žaidėjų reitingą. */
+export function RatedCheckbox({
+  checked,
   onChange,
 }: {
-  names: string[];
-  onChange: (index: number, name: string) => void;
+  checked: boolean;
+  onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2.5">
-      {names.map((name, index) => (
-        <label
-          key={index}
-          className="flex items-center gap-3 rounded-tile bg-fill px-4 py-3"
-        >
-          <span className="w-6 shrink-0 text-sm font-semibold text-dim">
-            {index + 1}
-          </span>
-          <input
-            value={name}
-            onChange={(event) => onChange(index, event.target.value)}
-            placeholder={`Team ${index + 1}`}
-            maxLength={60}
-            className="w-full bg-transparent text-base outline-none placeholder:text-dim"
-          />
-        </label>
-      ))}
-    </div>
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "flex items-center gap-3.5 rounded-card border p-[18px] text-left transition-colors duration-150 ease-ios",
+        checked ? "border-gold bg-gold-soft" : "border-hair",
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-5 shrink-0 items-center justify-center rounded-[6px] border-2",
+          checked ? "border-gold bg-gold" : "border-hair",
+        )}
+      >
+        {checked ? (
+          <Check className="size-3 text-white" strokeWidth={3} />
+        ) : null}
+      </span>
+      <span className="text-md font-semibold tracking-snug">
+        Trečiadienio pasižaidimai su reitingais
+      </span>
+    </button>
   );
 }
 

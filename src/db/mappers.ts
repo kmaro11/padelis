@@ -2,7 +2,12 @@ import type { MatchRow, PlayerRow, TeamRow, TournamentRow } from "./schema";
 import type { Match, Player, Team, Tournament } from "@/lib/types";
 
 export function toTeam(row: TeamRow): Team {
-  return { id: row.id, name: row.name };
+  return {
+    id: row.id,
+    name: row.name,
+    player1Id: row.player1Id,
+    player2Id: row.player2Id,
+  };
 }
 
 export function toPlayer(row: PlayerRow): Player {
@@ -37,6 +42,7 @@ export function toTournament(
     format: row.format,
     status: row.status,
     courts: row.courts,
+    rated: row.rated,
     teams: teamRows.map(toTeam),
     matches: matchRows.map(toMatch),
   };
