@@ -203,6 +203,32 @@ export const matches = pgTable(
 );
 
 /**
+ * Kas sumokėjo už dalyvavimą. Raktas — komandos vieta, o ne `player_id`:
+ * `teams.player1Id/player2Id` gali būti null (svečias, kurio `players`
+ * sąraše nėra), o pinigus surinkti reikia ir iš jo.
+ *
+ * Eilutės buvimas = sumokėta. Nuėmus varnelę eilutė trinama, tad atskiro
+ * `paid` lauko nereikia.
+ */
+export const payments = pgTable(
+  "payments",
+  {
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    /** 1 arba 2 — kuris komandos žaidėjas */
+    slot: smallint("slot").notNull(),
+    paidAt: timestamp("paid_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.teamId, table.slot] }),
+    check("payments_slot_valid", sql`${table.slot} in (1, 2)`),
+  ],
+);
+
+/**
  * Užšaldyti reitingai (§4): su kokiu reitingu ir K žaidėjas pradėjo turnyrą
  * ir kuo baigė. Perrašoma kiekvieno perskaičiavimo metu.
  */
@@ -338,3 +364,4 @@ export type TeamInsert = typeof teams.$inferInsert;
 export type MatchRow = typeof matches.$inferSelect;
 export type MatchInsert = typeof matches.$inferInsert;
 export type SettingsRow = typeof settings.$inferSelect;
+export type PaymentRow = typeof payments.$inferSelect;

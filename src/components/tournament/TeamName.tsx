@@ -1,4 +1,5 @@
 import { cn } from "@/components/ui/cn";
+import { playerNames } from "@/lib/tournament-view";
 
 /**
  * Komandos pavadinimas siaurame stulpelyje. Pora saugoma kaip
@@ -22,10 +23,7 @@ export function TeamName({
 }) {
   const style = maxWidth ? { maxWidth } : undefined;
 
-  const players = (name ?? "")
-    .split("/")
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const players = playerNames(name);
 
   if (players.length < 2) {
     return (

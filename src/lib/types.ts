@@ -71,6 +71,16 @@ export interface RatingRow {
   ranked: boolean;
 }
 
+/** Vienas mokėtojas mokesčių sąraše — komandos slotas, ne `players` įrašas. */
+export interface PayerRow {
+  teamId: string;
+  slot: 1 | 2;
+  /** žaidėjo vardas iš `players`, o jei svečias — iš komandos pavadinimo */
+  name: string;
+  teamName: string;
+  paid: boolean;
+}
+
 /** Ką apie komandą žino create flow'as prieš įrašymą į DB. */
 export interface TeamDraft {
   name: string;

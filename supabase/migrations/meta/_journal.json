@@ -78,6 +78,20 @@
       "when": 1787666124682,
       "tag": "0010_ratings_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788198166409,
+      "tag": "0011_fat_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788198166410,
+      "tag": "0012_payments_rls",
+      "breakpoints": true
     }
   ]
 }

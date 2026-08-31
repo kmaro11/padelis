@@ -8,6 +8,7 @@ import {
   insertTournament,
   renameTeam,
   saveMatchScore,
+  setPaid,
   updateSettings,
   type CreateTournamentInput,
   type Settings,
@@ -45,6 +46,17 @@ export async function renameTeamAction(
 ) {
   await renameTeam(teamId, name);
   revalidatePath(`/tournament/${tournamentId}/teams`);
+  revalidatePath(`/tournament/${tournamentId}`);
+}
+
+export async function setPaidAction(
+  tournamentId: string,
+  teamId: string,
+  slot: 1 | 2,
+  paid: boolean,
+) {
+  await setPaid(teamId, slot, paid);
+  revalidatePath(`/tournament/${tournamentId}/payments`);
   revalidatePath(`/tournament/${tournamentId}`);
 }
 

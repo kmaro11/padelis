@@ -156,13 +156,17 @@ export function plural(count: number, one: string, many: string): string {
   return count === 1 ? one : many;
 }
 
-export function initials(name: string): string {
-  // "Jonas Jonaitis / Petras Petraitis" -> JP: poroje imam po raidę iš
-  // kiekvieno žaidėjo, o ne dvi iš pirmojo vardo.
-  const sides = name
+/** "Jonas Jonaitis / Petras Petraitis" -> ["Jonas Jonaitis", "Petras Petraitis"] */
+export function playerNames(name: string | null): string[] {
+  return (name ?? "")
     .split("/")
-    .map((side) => side.trim())
+    .map((part) => part.trim())
     .filter(Boolean);
+}
+
+export function initials(name: string): string {
+  // poroje imam po raidę iš kiekvieno žaidėjo, o ne dvi iš pirmojo vardo.
+  const sides = playerNames(name);
 
   if (sides.length > 1) {
     return sides

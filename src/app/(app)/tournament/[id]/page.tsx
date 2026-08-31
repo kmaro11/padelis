@@ -5,6 +5,7 @@ import {
   ListChecks,
   Trophy,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,7 +16,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SectionLabel } from "@/components/ui/SectionLabel";
-import { getTournament } from "@/db/queries";
+import { countPaid, getTournament } from "@/db/queries";
 import { formatLongDate, parseDate } from "@/lib/date";
 import { nextMatch, summarize } from "@/lib/tournament-view";
 import { FORMAT_LABEL } from "@/lib/types";
@@ -24,11 +25,16 @@ export const dynamic = "force-dynamic";
 
 export default async function TournamentPage({ params }: PageProps<"/tournament/[id]">) {
   const { id } = await params;
-  const tournament = await getTournament(id);
+  const [tournament, paid] = await Promise.all([
+    getTournament(id),
+    countPaid(id),
+  ]);
   if (!tournament) notFound();
 
   const summary = summarize(tournament);
   const next = nextMatch(tournament);
+  // du žmonės komandoje — mokėtojų tiek pat, kad ir be `players` įrašo
+  const payers = tournament.teams.length * 2;
 
   return (
     <Screen>
@@ -99,6 +105,18 @@ export default async function TournamentPage({ params }: PageProps<"/tournament/
           title="Teams"
           caption={`${tournament.teams.length} entered`}
         />
+        <ActionCard
+          href={`/tournament/${tournament.id}/payments`}
+          icon={Wallet}
+          title="Payments"
+          caption={
+            payers > 0 && paid >= payers
+              ? "All paid"
+              : `${paid} / ${payers} paid`
+          }
+          highlighted={payers > 0 && paid < payers}
+          wide
+        />
       </nav>
 
       {next ? (
@@ -128,6 +146,7 @@ function ActionCard({
   caption,
   highlighted = false,
   disabled = false,
+  wide = false,
 }: {
   href: string;
   icon: LucideIcon;
@@ -135,6 +154,8 @@ function ActionCard({
   caption: string;
   highlighted?: boolean;
   disabled?: boolean;
+  /** Payments kortelė driekiasi per abu stulpelius ir gula į vieną eilutę. */
+  wide?: boolean;
 }) {
   const content = (
     <>
@@ -156,7 +177,10 @@ function ActionCard({
   );
 
   const className = cn(
-    "flex h-28 flex-col justify-between rounded-card border border-hair p-[18px]",
+    "flex rounded-card border border-hair p-[18px]",
+    wide
+      ? "col-span-2 items-center gap-3.5"
+      : "h-28 flex-col justify-between",
     disabled && "opacity-40",
   );
 

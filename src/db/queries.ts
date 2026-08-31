@@ -1,11 +1,12 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
 
 import { db } from "./index";
 import { toPlayer, toTournament } from "./mappers";
 import {
   matches,
+  payments,
   players,
   ratingChanges,
   settings,
@@ -23,9 +24,11 @@ import {
   type RatedTournament,
 } from "@/lib/rating";
 import { advanceFormat, createTournament } from "@/lib/schedule";
+import { playerNames } from "@/lib/tournament-view";
 import { isPlayed } from "@/lib/standings";
 import type {
   MatchScore,
+  PayerRow,
   Player,
   RatingRow,
   TeamDraft,
@@ -129,6 +132,68 @@ export async function getTournament(id: string): Promise<Tournament | null> {
   ]);
 
   return toTournament(row, teamRows, matchRows);
+}
+
+/**
+ * Turnyro mokėtojų sąrašas — po eilutę kiekvienai komandos vietai,
+ * komandų eile. Vardas imamas iš `players`, o svečiui (player id null) —
+ * iš komandos pavadinimo, kuris saugomas kaip "Vardas / Vardas".
+ */
+export async function listPayers(tournamentId: string): Promise<PayerRow[]> {
+  const teamRows = await db
+    .select()
+    .from(teams)
+    .where(eq(teams.tournamentId, tournamentId))
+    .orderBy(asc(teams.seed));
+
+  if (teamRows.length === 0) return [];
+
+  const playerIds = teamRows
+    .flatMap((team) => [team.player1Id, team.player2Id])
+    .filter((id): id is string => id !== null);
+
+  const [playerRows, paidRows] = await Promise.all([
+    playerIds.length > 0
+      ? db.select().from(players).where(inArray(players.id, playerIds))
+      : Promise.resolve([]),
+    db.select().from(payments).where(
+      inArray(
+        payments.teamId,
+        teamRows.map((team) => team.id),
+      ),
+    ),
+  ]);
+
+  const nameById = new Map(playerRows.map((row) => [row.id, row.name]));
+  const paid = new Set(paidRows.map((row) => `${row.teamId}:${row.slot}`));
+
+  return teamRows.flatMap((team) => {
+    const fallback = playerNames(team.name);
+
+    return ([1, 2] as const).map((slot) => {
+      const playerId = slot === 1 ? team.player1Id : team.player2Id;
+      const known = playerId ? nameById.get(playerId) : undefined;
+
+      return {
+        teamId: team.id,
+        slot,
+        name: known ?? fallback[slot - 1] ?? `${team.name} · ${slot}`,
+        teamName: team.name,
+        paid: paid.has(`${team.id}:${slot}`),
+      };
+    });
+  });
+}
+
+/** Kiek žmonių sumokėjo — turnyro ekrano antraštei. */
+export async function countPaid(tournamentId: string): Promise<number> {
+  const [row] = await db
+    .select({ paid: count() })
+    .from(payments)
+    .innerJoin(teams, eq(payments.teamId, teams.id))
+    .where(eq(teams.tournamentId, tournamentId));
+
+  return row?.paid ?? 0;
 }
 
 /* ----------------------------------------------------------------- writes */
@@ -333,6 +398,25 @@ export async function renameTeam(
   if (clean.length === 0) return;
 
   await db.update(teams).set({ name: clean }).where(eq(teams.id, teamId));
+}
+
+/** Eilutės buvimas = sumokėta; nuimant varnelę ji trinama. */
+export async function setPaid(
+  teamId: string,
+  slot: 1 | 2,
+  paid: boolean,
+): Promise<void> {
+  if (paid) {
+    await db
+      .insert(payments)
+      .values({ teamId, slot })
+      .onConflictDoNothing({ target: [payments.teamId, payments.slot] });
+    return;
+  }
+
+  await db
+    .delete(payments)
+    .where(and(eq(payments.teamId, teamId), eq(payments.slot, slot)));
 }
 
 /* --------------------------------------------------------------- settings */
