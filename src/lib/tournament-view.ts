@@ -1,5 +1,11 @@
 import { isPlayed, progress, roundRobinComplete } from "./standings";
-import type { Match, Team, Tournament } from "./types";
+import {
+  GROUPS,
+  type GroupKey,
+  type Match,
+  type Team,
+  type Tournament,
+} from "./types";
 
 /** Rungtynių numeriai ekrane ("Match 13") — pagal tvarkaraščio eilę. */
 export function matchNumbers(matches: Match[]): Map<string, number> {
@@ -66,7 +72,11 @@ function phaseNote(
   }
 
   const stage =
-    tournament.format === "final-four" ? "the semifinals" : "the placement round";
+    tournament.format === "final-four"
+      ? "the semifinals"
+      : tournament.format === "groups-finals"
+        ? "the finals"
+        : "the placement round";
 
   if (!unlocked) {
     return `${remaining} ${plural(remaining, "match", "matches")} left before ${stage} unlock.`;
@@ -150,6 +160,85 @@ export function groupByRound(matches: Match[]): RoundGroup[] {
 export function activeRoundIndex(rounds: RoundGroup[]): number {
   const index = rounds.findIndex((group) => !group.complete);
   return index === -1 ? Math.max(0, rounds.length - 1) : index;
+}
+
+export type TrackKey = GroupKey | "knockout";
+
+/**
+ * Viena savarankiška tvarkaraščio juosta — grupė arba finalai. Kiekviena turi
+ * savo turus ir savo eigą, tad greičiau žaidžianti grupė gali vesti rezultatus
+ * nelaukdama antros.
+ */
+export interface Track {
+  key: TrackKey;
+  /** "Grupė A" / "Finalai" */
+  label: string;
+  /** trumpas variantas segmentui */
+  short: string;
+  rounds: RoundGroup[];
+  played: number;
+  total: number;
+  complete: boolean;
+}
+
+/**
+ * "Grupės + Finalai" tvarkaraštis, išskaidytas į juostas: A, B ir finalai.
+ * null — kitas formatas arba burtai neįvykę (senas turnyras); tada ekranas
+ * lieka su vienu bendru turų sąrašu.
+ */
+export function groupTracks(tournament: Tournament): Track[] | null {
+  if (tournament.format !== "groups-finals") return null;
+  if (!tournament.teams.some((team) => team.group !== null)) return null;
+
+  const groupOf = new Map(tournament.teams.map((team) => [team.id, team.group]));
+  const groupOfMatch = (match: Match): GroupKey | null =>
+    groupOf.get(match.homeTeamId ?? "") ??
+    groupOf.get(match.awayTeamId ?? "") ??
+    null;
+
+  const roundRobin = tournament.matches.filter(
+    (match) => match.stage === "round-robin",
+  );
+  const knockout = tournament.matches.filter(
+    (match) => match.stage !== "round-robin",
+  );
+
+  const groups = GROUPS.map((group) =>
+    toTrack(
+      group,
+      `Grupė ${group}`,
+      group,
+      groupByRound(roundRobin.filter((match) => groupOfMatch(match) === group)),
+    ),
+  );
+
+  return [...groups, toTrack("knockout", "Finalai", "Finalai", groupByRound(knockout))];
+}
+
+function toTrack(
+  key: TrackKey,
+  label: string,
+  short: string,
+  rounds: RoundGroup[],
+): Track {
+  const matches = rounds.flatMap((group) => group.matches);
+  const played = matches.filter(isPlayed).length;
+
+  return {
+    key,
+    label,
+    short,
+    rounds,
+    played,
+    total: matches.length,
+    complete: matches.length > 0 && played === matches.length,
+  };
+}
+
+/** Juosta, nuo kurios atsiveria ekranas — pirma dar nebaigta. */
+export function activeTrackKey(tracks: Track[]): TrackKey {
+  const pending = tracks.find((track) => track.total > 0 && !track.complete);
+  return (pending ?? tracks[tracks.length - 1]).key;
 }
 
 export function plural(count: number, one: string, many: string): string {
