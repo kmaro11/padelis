@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 import { deletePlayerAction, renamePlayerAction } from "@/app/actions/players";
 import { cn } from "@/components/ui/cn";
 import { initials } from "@/lib/tournament-view";
 import type { Player, RatingRow } from "@/lib/types";
-import { AddPlayerRow } from "./AddPlayerRow";
+import { AddPlayerSheet } from "./AddPlayerSheet";
 
 function byName(a: RatingRow, b: RatingRow): number {
   return a.player.name.localeCompare(b.player.name);
@@ -51,16 +51,79 @@ export function PlayerList({ players }: { players: RatingRow[] }) {
   const [list, setList] = useState(() => [...players].sort(byName));
   const [editing, setEditing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const clean = query.trim();
+  const visible = useMemo(() => {
+    if (clean.length === 0) return list;
+    const needle = clean.toLocaleLowerCase("lt");
+    return list.filter((row) =>
+      row.player.name.toLocaleLowerCase("lt").includes(needle),
+    );
+  }, [list, clean]);
 
   return (
     <div className="flex flex-col">
-      <AddPlayerRow
-        onAdded={(player) =>
-          setList((current) => [...current, freshRow(player)].sort(byName))
-        }
-      />
+      <div className="flex items-center gap-2.5 pb-2">
+        <span className="flex flex-1 items-center gap-2 rounded-field bg-fill px-3">
+          <Search className="size-4 shrink-0 text-faint" />
+          <input
+            type="search"
+            value={query}
+            maxLength={60}
+            placeholder="Search players"
+            aria-label="Search players"
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full bg-transparent py-2.5 text-base outline-none placeholder:text-dim"
+          />
+          {query ? (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="text-faint"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
+        </span>
+        <button
+          type="button"
+          aria-label="Add player"
+          onClick={() => setAdding(true)}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gold text-white shadow-gold active:bg-gold-hover"
+        >
+          <Plus className="size-5" strokeWidth={3} />
+        </button>
+      </div>
 
-      {list.map((row) => (
+      {visible.length === 0 && clean.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="flex items-center gap-3.5 border-b border-hair py-3.5 text-left"
+        >
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gold-soft text-gold">
+            <Plus className="size-4" strokeWidth={3} />
+          </span>
+          <span className="text-base">Add “{clean}”</span>
+        </button>
+      ) : null}
+
+      {adding ? (
+        <AddPlayerSheet
+          initialName={visible.length === 0 ? clean : ""}
+          existing={list.map((row) => row.player)}
+          onAdded={(player) => {
+            setList((current) => [...current, freshRow(player)].sort(byName));
+            setQuery("");
+          }}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
+
+      {visible.map((row) => (
         <PlayerRow
           key={row.player.id}
           row={row}
