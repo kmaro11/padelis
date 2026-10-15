@@ -5,25 +5,25 @@ import { Pencil } from "lucide-react";
 
 import { updateTournamentDetailsAction } from "@/app/actions/tournaments";
 import { Calendar } from "@/components/create/Calendar";
-import { CourtNameInputs } from "@/components/create/steps";
+import { CourtPicker } from "@/components/create/steps";
 
 export function EditTournament({
   tournamentId,
   name: initialName,
   date: initialDate,
-  courts,
+  courts: initialCourts,
   courtNames: initialCourtNames,
 }: {
   tournamentId: string;
   name: string;
   date: string;
-  /** skaičius fiksuotas — kortai jau priskirti mačams */
   courts: number;
   courtNames: string[] | null;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [date, setDate] = useState(initialDate);
+  const [courts, setCourts] = useState(initialCourts);
   const [courtNames, setCourtNames] = useState(initialCourtNames ?? []);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -31,6 +31,7 @@ export function EditTournament({
   const close = () => {
     setName(initialName);
     setDate(initialDate);
+    setCourts(initialCourts);
     setCourtNames(initialCourtNames ?? []);
     setError(null);
     setOpen(false);
@@ -38,8 +39,11 @@ export function EditTournament({
 
   const clean = name.trim();
   const courtsChanged =
-    courtNames.map((value) => value.trim()).join("\n") !==
-    (initialCourtNames ?? []).join("\n");
+    courts !== initialCourts ||
+    courtNames
+      .slice(0, courts)
+      .map((value) => value.trim())
+      .join("\n") !== (initialCourtNames ?? []).join("\n");
   const changed =
     clean !== initialName || date !== initialDate || courtsChanged;
 
@@ -52,7 +56,8 @@ export function EditTournament({
         await updateTournamentDetailsAction(tournamentId, {
           name: clean,
           date,
-          courtNames,
+          courts,
+          courtNames: courtNames.slice(0, courts),
         });
         setOpen(false);
       } catch {
@@ -96,10 +101,11 @@ export function EditTournament({
               className="rounded-field bg-fill px-3 py-2.5 text-base outline-none"
             />
             <Calendar value={date} onChange={setDate} allowPast />
-            <CourtNameInputs
+            <CourtPicker
               count={courts}
               names={courtNames}
-              onChange={setCourtNames}
+              onCountChange={setCourts}
+              onNamesChange={setCourtNames}
             />
             {error ? (
               <p className="text-center text-sm text-red-600">{error}</p>

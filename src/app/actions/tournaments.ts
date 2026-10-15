@@ -14,6 +14,7 @@ import {
   updateSettings,
   type CreateTournamentInput,
   type Settings,
+  type TournamentDetails,
 } from "@/db/queries";
 import type { MatchScore } from "@/lib/types";
 
@@ -43,7 +44,7 @@ export async function deleteTournamentAction(id: string) {
 
 export async function updateTournamentDetailsAction(
   tournamentId: string,
-  details: { name: string; date: string; courtNames: string[] | null },
+  details: TournamentDetails,
 ) {
   await updateTournamentDetails(tournamentId, details);
   revalidatePath("/");

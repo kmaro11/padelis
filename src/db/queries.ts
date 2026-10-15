@@ -36,6 +36,7 @@ import {
   advanceFormat,
   createTournament,
   normalizeCourtNames,
+  reassignCourts,
 } from "@/lib/schedule";
 import { playerNames } from "@/lib/tournament-view";
 import { isPlayed } from "@/lib/standings";
@@ -595,33 +596,51 @@ export async function listRatings(): Promise<RatingRow[]> {
   }));
 }
 
+export interface TournamentDetails {
+  name: string;
+  date: string;
+  courts: number;
+  courtNames: string[] | null;
+}
+
 /**
- * Pavadinimas ir data. Data lemia reitinguojamų turnyrų eilę, tad ją
+ * Pavadinimas, data ir kortai. Data lemia reitinguojamų turnyrų eilę, tad ją
  * pakeitus užbaigtam reitinguojamam turnyrui reitingai perleidžiami iš naujo.
+ * Pakeitus kortų skaičių mačai perskirstomi po kortus (`reassignCourts`).
  */
 export async function updateTournamentDetails(
   id: string,
-  details: { name: string; date: string; courtNames: string[] | null },
+  details: TournamentDetails,
 ): Promise<void> {
   const name = details.name.trim().slice(0, 80);
   if (name.length === 0) throw new Error("Name required");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(details.date)) throw new Error("Bad date");
+  // DB check: 1–8
+  const courts = Math.min(8, Math.max(1, Math.round(details.courts)));
 
-  const [before] = await db
-    .select()
-    .from(tournaments)
-    .where(eq(tournaments.id, id))
-    .limit(1);
+  const before = await db.transaction(async (tx) => {
+    const current = await loadForUpdate(tx, id);
+    if (!current) return null;
+
+    await tx
+      .update(tournaments)
+      .set({
+        name,
+        date: details.date,
+        courts,
+        courtNames: normalizeCourtNames(details.courtNames, courts),
+      })
+      .where(eq(tournaments.id, id));
+
+    if (courts !== current.courts) {
+      for (const [matchId, court] of reassignCourts(current.matches, courts)) {
+        await tx.update(matches).set({ court }).where(eq(matches.id, matchId));
+      }
+    }
+
+    return current;
+  });
   if (!before) return;
-
-  await db
-    .update(tournaments)
-    .set({
-      name,
-      date: details.date,
-      courtNames: normalizeCourtNames(details.courtNames, before.courts),
-    })
-    .where(eq(tournaments.id, id));
 
   if (
     before.rated &&

@@ -419,6 +419,52 @@ export function normalizeCourtNames(
   return clean.some(Boolean) ? clean : null;
 }
 
+/**
+ * Pakeitus kortų skaičių jau sukurtame turnyre: kiekviename ture mačas lieka
+ * savo korte, jei tas dar egzistuoja ir nėra užimtas, o likę (ir buvę
+ * dvigubai tame pačiame korte) dedami į laisvus, tada į mažiausiai užimtus.
+ * Grąžina tik pasikeitusius: match id → naujas kortas.
+ */
+export function reassignCourts(
+  matches: Match[],
+  courts: number,
+): Map<string, number> {
+  const count = Math.max(1, courts);
+  const byRound = new Map<number, Match[]>();
+  for (const match of matches) {
+    byRound.set(match.round, [...(byRound.get(match.round) ?? []), match]);
+  }
+
+  const changed = new Map<string, number>();
+
+  for (const round of byRound.values()) {
+    const ordered = [...round].sort(
+      (a, b) =>
+        (a.court ?? Infinity) - (b.court ?? Infinity) ||
+        a.id.localeCompare(b.id),
+    );
+    const load = Array.from({ length: count }, () => 0);
+    const pending: Match[] = [];
+
+    for (const match of ordered) {
+      const court = match.court;
+      if (court && court <= count && load[court - 1] === 0) {
+        load[court - 1] = 1;
+      } else {
+        pending.push(match);
+      }
+    }
+
+    for (const match of pending) {
+      const index = load.indexOf(Math.min(...load));
+      load[index] += 1;
+      if (match.court !== index + 1) changed.set(match.id, index + 1);
+    }
+  }
+
+  return changed;
+}
+
 function maxRound(matches: Match[]): number {
   return matches.reduce((max, match) => Math.max(max, match.round), 0);
 }
