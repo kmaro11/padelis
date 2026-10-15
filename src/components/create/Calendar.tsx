@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { toISODate } from "@/lib/date";
+import { parseDate, toISODate } from "@/lib/date";
 import { cn } from "../ui/cn";
 
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
@@ -11,12 +11,17 @@ const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 export function Calendar({
   value,
   onChange,
+  allowPast = false,
 }: {
   value: string | null;
   onChange: (iso: string) => void;
+  /** true — taisant jau įvykusio turnyro datą */
+  allowPast?: boolean;
 }) {
   const today = startOfDay(new Date());
-  const [cursor, setCursor] = useState(() => startOfMonth(today));
+  const [cursor, setCursor] = useState(() =>
+    startOfMonth(value ? parseDate(value) : today),
+  );
 
   const days = monthGrid(cursor);
   const todayIso = toISODate(today);
@@ -66,7 +71,7 @@ export function Calendar({
           const iso = toISODate(day);
           const selected = iso === value;
           const isToday = iso === todayIso;
-          const past = day < today;
+          const past = !allowPast && day < today;
 
           return (
             <button

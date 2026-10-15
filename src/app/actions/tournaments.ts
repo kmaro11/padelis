@@ -10,6 +10,7 @@ import {
   saveMatchScore,
   setPaid,
   setTournamentRated,
+  updateTournamentDetails,
   updateSettings,
   type CreateTournamentInput,
   type Settings,
@@ -38,6 +39,18 @@ export async function deleteTournamentAction(id: string) {
   revalidatePath("/");
   revalidatePath("/events");
   revalidatePath("/tournament");
+}
+
+export async function updateTournamentDetailsAction(
+  tournamentId: string,
+  details: { name: string; date: string },
+) {
+  await updateTournamentDetails(tournamentId, details);
+  revalidatePath("/");
+  revalidatePath("/events");
+  revalidatePath("/ratings");
+  revalidatePath("/players");
+  revalidatePath(`/tournament/${tournamentId}`);
 }
 
 export async function setRatedAction(tournamentId: string, rated: boolean) {

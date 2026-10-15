@@ -249,10 +249,18 @@ function toDrafts(teams: TeamSlots[], players: Player[]): TeamDraft[] {
   }));
 }
 
+/** Kilmininkas, nes „Trečiadienio nužievinimas", ne „Trečiadienis …". */
+const WEEKDAY_GENITIVE = [
+  "Sekmadienio",
+  "Pirmadienio",
+  "Antradienio",
+  "Trečiadienio",
+  "Ketvirtadienio",
+  "Penktadienio",
+  "Šeštadienio",
+];
+
 /** Handoff'e pavadinimo žingsnio nėra — vardas kildinamas iš datos. */
 function suggestName(iso: string): string {
-  const weekday = new Intl.DateTimeFormat("en-GB", {
-    weekday: "long",
-  }).format(parseDate(iso));
-  return `${weekday} tournament`;
+  return `${WEEKDAY_GENITIVE[parseDate(iso).getDay()]} nužievinimas`;
 }

@@ -566,6 +566,39 @@ export async function listRatings(): Promise<RatingRow[]> {
 }
 
 /**
+ * Pavadinimas ir data. Data lemia reitinguojamų turnyrų eilę, tad ją
+ * pakeitus užbaigtam reitinguojamam turnyrui reitingai perleidžiami iš naujo.
+ */
+export async function updateTournamentDetails(
+  id: string,
+  details: { name: string; date: string },
+): Promise<void> {
+  const name = details.name.trim().slice(0, 80);
+  if (name.length === 0) throw new Error("Name required");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(details.date)) throw new Error("Bad date");
+
+  const [before] = await db
+    .select()
+    .from(tournaments)
+    .where(eq(tournaments.id, id))
+    .limit(1);
+  if (!before) return;
+
+  await db
+    .update(tournaments)
+    .set({ name, date: details.date })
+    .where(eq(tournaments.id, id));
+
+  if (
+    before.rated &&
+    before.status === "completed" &&
+    before.date !== details.date
+  ) {
+    await recomputeRatings();
+  }
+}
+
+/**
  * Pamiršus uždėti varnelę kuriant — galima pataisyti ir vėliau. Reitingai
  * perleidžiami iš naujo, tad užbaigtas turnyras iškart įsiskaičiuoja (ar
  * išsiskaičiuoja) į žaidėjų reitingą.

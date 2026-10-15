@@ -11,6 +11,7 @@ import {
 
 import { Screen } from "@/components/layout/AppShell";
 import { DeleteTournament } from "@/components/tournament/DeleteTournament";
+import { EditTournament } from "@/components/tournament/EditTournament";
 import { RatedBadge } from "@/components/tournament/RatedBadge";
 import { RatedToggle } from "@/components/tournament/RatedToggle";
 import { ButtonLink } from "@/components/ui/Button";
@@ -43,9 +44,16 @@ export default async function TournamentPage({ params }: PageProps<"/tournament/
         <SectionLabel className="text-gold">
           {formatLongDate(parseDate(tournament.date))}
         </SectionLabel>
-        <h1 className="mt-2 text-5xl font-bold tracking-display">
-          {tournament.name}
-        </h1>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <h1 className="text-5xl font-bold tracking-display">
+            {tournament.name}
+          </h1>
+          <EditTournament
+            tournamentId={tournament.id}
+            name={tournament.name}
+            date={tournament.date}
+          />
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <p className="text-[14px] text-dim">
             {FORMAT_LABEL[tournament.format]} · {tournament.teams.length} teams
