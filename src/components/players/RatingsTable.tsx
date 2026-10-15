@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 
 import { cn } from "@/components/ui/cn";
@@ -47,9 +48,10 @@ function Row({ row, rank }: { row: RatingRow; rank: number | null }) {
   const podium = rank !== null && rank <= 3;
 
   return (
-    <div
+    <Link
+      href={`/players/${row.player.id}?from=ratings`}
       className={cn(
-        "flex items-center gap-3 border-b border-hair py-3",
+        "flex items-center gap-3 border-b border-hair py-3 active:bg-fill",
         row.stale && "opacity-60",
       )}
     >
@@ -100,7 +102,7 @@ function Row({ row, rank }: { row: RatingRow; rank: number | null }) {
           </span>
         ) : null}
       </span>
-    </div>
+    </Link>
   );
 }
 

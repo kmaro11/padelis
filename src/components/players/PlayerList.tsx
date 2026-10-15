@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 
 import { deletePlayerAction, renamePlayerAction } from "@/app/actions/players";
@@ -216,7 +217,10 @@ function PlayerRow({
         </>
       ) : (
         <>
-          <span className="flex min-w-0 flex-1 flex-col">
+          <Link
+            href={`/players/${player.id}`}
+            className="flex min-w-0 flex-1 flex-col"
+          >
             <span className="truncate text-base font-medium">
               {player.name}
             </span>
@@ -228,7 +232,7 @@ function PlayerRow({
                 ? ` · ${SHORT_DATE.format(new Date(`${row.lastPlayedAt}T00:00:00`))}`
                 : null}
             </span>
-          </span>
+          </Link>
           <button
             type="button"
             aria-label={`Rename ${player.name}`}

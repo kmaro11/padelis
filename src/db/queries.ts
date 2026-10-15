@@ -9,6 +9,7 @@ import {
   inArray,
   isNotNull,
   ne,
+  or,
 } from "drizzle-orm";
 
 import { db } from "./index";
@@ -208,6 +209,75 @@ export async function countPaid(tournamentId: string): Promise<number> {
     .where(eq(teams.tournamentId, tournamentId));
 
   return row?.paid ?? 0;
+}
+
+export interface PlayerProfile {
+  player: Player;
+  /** visi turnyrai, kuriuose žaidė — naujausi viršuje */
+  tournaments: Tournament[];
+  /** reitinguojamų turnyrų pradžios ir pabaigos reitingas */
+  entries: Map<string, { ratingStart: number; ratingEnd: number }>;
+}
+
+export async function getPlayerProfile(
+  id: string,
+): Promise<PlayerProfile | null> {
+  const [row] = await db
+    .select()
+    .from(players)
+    .where(eq(players.id, id))
+    .limit(1);
+  if (!row) return null;
+
+  const [ownTeams, entryRows] = await Promise.all([
+    db
+      .select({ tournamentId: teams.tournamentId })
+      .from(teams)
+      .where(or(eq(teams.player1Id, id), eq(teams.player2Id, id))),
+    db.select().from(tournamentEntries).where(eq(tournamentEntries.playerId, id)),
+  ]);
+
+  const entries = new Map(
+    entryRows.map((entry) => [
+      entry.tournamentId,
+      { ratingStart: entry.ratingStart, ratingEnd: entry.ratingEnd },
+    ]),
+  );
+
+  const ids = [...new Set(ownTeams.map((team) => team.tournamentId))];
+  if (ids.length === 0) {
+    return { player: toPlayer(row), tournaments: [], entries };
+  }
+
+  const [tournamentRows, teamRows, matchRows] = await Promise.all([
+    db
+      .select()
+      .from(tournaments)
+      .where(inArray(tournaments.id, ids))
+      .orderBy(desc(tournaments.date), desc(tournaments.createdAt)),
+    db
+      .select()
+      .from(teams)
+      .where(inArray(teams.tournamentId, ids))
+      .orderBy(asc(teams.seed)),
+    db
+      .select()
+      .from(matches)
+      .where(inArray(matches.tournamentId, ids))
+      .orderBy(asc(matches.round)),
+  ]);
+
+  return {
+    player: toPlayer(row),
+    tournaments: tournamentRows.map((tournament) =>
+      toTournament(
+        tournament,
+        teamRows.filter((team) => team.tournamentId === tournament.id),
+        matchRows.filter((match) => match.tournamentId === tournament.id),
+      ),
+    ),
+    entries,
+  };
 }
 
 /**
