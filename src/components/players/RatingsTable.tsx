@@ -1,3 +1,5 @@
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+
 import { cn } from "@/components/ui/cn";
 import { MIN_TOURNAMENTS_PUBLIC, STALE_DAYS } from "@/lib/rating";
 import { initials } from "@/lib/tournament-view";
@@ -51,13 +53,16 @@ function Row({ row, rank }: { row: RatingRow; rank: number | null }) {
         row.stale && "opacity-60",
       )}
     >
-      <span
-        className={cn(
-          "w-6 shrink-0 text-center text-base font-bold leading-none",
-          podium ? "text-gold" : "text-dim",
-        )}
-      >
-        {rank ?? "–"}
+      <span className="flex w-7 shrink-0 flex-col items-center gap-1">
+        <span
+          className={cn(
+            "text-base font-bold leading-none",
+            podium ? "text-gold" : "text-dim",
+          )}
+        >
+          {rank ?? "–"}
+        </span>
+        <Movement value={row.movement} />
       </span>
 
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-fill text-xs font-semibold text-dim">
@@ -96,6 +101,42 @@ function Row({ row, rank }: { row: RatingRow; rank: number | null }) {
         ) : null}
       </span>
     </div>
+  );
+}
+
+/** ↑2 / ↓1 / – / NAUJ. — vietos pokytis nuo paskutinio turnyro. */
+function Movement({ value }: { value: RatingRow["movement"] }) {
+  if (value === null) return null;
+
+  if (value === "new") {
+    return (
+      <span className="text-[9px] font-semibold uppercase leading-none tracking-badge text-gold">
+        Nauj.
+      </span>
+    );
+  }
+
+  if (value === 0) {
+    return (
+      <span aria-label="Liko ten pat" className="text-faint">
+        <Minus className="size-3" strokeWidth={3} />
+      </span>
+    );
+  }
+
+  const Arrow = value > 0 ? ArrowUp : ArrowDown;
+
+  return (
+    <span
+      aria-label={value > 0 ? `Pakilo ${value}` : `Nukrito ${-value}`}
+      className={cn(
+        "flex items-center text-[10.5px] font-semibold leading-none tabular-nums",
+        value > 0 ? "text-emerald-600" : "text-red-600",
+      )}
+    >
+      <Arrow className="size-3" strokeWidth={3} />
+      {Math.abs(value)}
+    </span>
   );
 }
 

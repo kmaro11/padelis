@@ -37,6 +37,7 @@ function freshRow(player: Player): RatingRow {
     lastPlayedAt: null,
     stale: false,
     lastChange: null,
+    movement: null,
     ranked: false,
   };
 }

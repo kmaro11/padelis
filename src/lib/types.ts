@@ -67,6 +67,11 @@ export interface RatingRow {
   stale: boolean;
   /** pokytis paskutiniame turnyre */
   lastChange: number | null;
+  /**
+   * Kiek vietų pakilo (+) ar nukrito (−) lentelėje nuo paskutinio
+   * reitinguojamo turnyro; "new" — ką tik pateko; null — ne lentelėje.
+   */
+  movement: number | "new" | null;
   /** §9 — į viešą lentelę patenka nuo 4 turnyrų */
   ranked: boolean;
 }

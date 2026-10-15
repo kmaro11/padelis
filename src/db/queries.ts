@@ -566,6 +566,7 @@ export async function listRatings(): Promise<RatingRow[]> {
     // paskutinis turnyras žaidėjui — iš jo rodom pokytį (+12 / −8)
     db
       .select({
+        tournamentId: tournamentEntries.tournamentId,
         playerId: tournamentEntries.playerId,
         ratingStart: tournamentEntries.ratingStart,
         ratingEnd: tournamentEntries.ratingEnd,
@@ -576,7 +577,7 @@ export async function listRatings(): Promise<RatingRow[]> {
         tournaments,
         eq(tournaments.id, tournamentEntries.tournamentId),
       )
-      .orderBy(asc(tournaments.date)),
+      .orderBy(asc(tournaments.date), asc(tournaments.createdAt)),
   ]);
 
   /** eilutės surikiuotos pagal datą — vėlesnė perrašo ankstesnę */
@@ -585,6 +586,51 @@ export async function listRatings(): Promise<RatingRow[]> {
     latest.set(entry.playerId, entry.ratingEnd - entry.ratingStart);
   }
 
+  // Lentelė prieš paskutinį reitinguojamą turnyrą: jo dalyviams grąžinam
+  // pradinį reitingą ir vienu turnyru mažiau, kiti lieka kaip yra.
+  const lastId = entryRows.at(-1)?.tournamentId;
+  const startOfLast = new Map(
+    entryRows
+      .filter((entry) => entry.tournamentId === lastId)
+      .map((entry) => [entry.playerId, entry.ratingStart]),
+  );
+
+  const rankOf = (
+    rows: { id: string; name: string; rating: number; played: number }[],
+  ) =>
+    new Map(
+      rows
+        .filter((row) => row.played >= MIN_TOURNAMENTS_PUBLIC)
+        .sort(
+          (a, b) => b.rating - a.rating || a.name.localeCompare(b.name),
+        )
+        .map((row, index) => [row.id, index + 1]),
+    );
+
+  const rankNow = rankOf(
+    playerRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      rating: row.rating,
+      played: row.tournamentsPlayed,
+    })),
+  );
+  const rankBefore = rankOf(
+    playerRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      rating: startOfLast.get(row.id) ?? row.rating,
+      played: row.tournamentsPlayed - (startOfLast.has(row.id) ? 1 : 0),
+    })),
+  );
+
+  const movementOf = (id: string): RatingRow["movement"] => {
+    const now = rankNow.get(id);
+    if (now === undefined) return null;
+    const before = rankBefore.get(id);
+    return before === undefined ? "new" : before - now;
+  };
+
   return playerRows.map((row) => ({
     player: toPlayer(row),
     rating: row.rating,
@@ -592,6 +638,7 @@ export async function listRatings(): Promise<RatingRow[]> {
     lastPlayedAt: row.lastPlayedAt,
     stale: isStale(row.lastPlayedAt),
     lastChange: latest.get(row.id) ?? null,
+    movement: movementOf(row.id),
     ranked: row.tournamentsPlayed >= MIN_TOURNAMENTS_PUBLIC,
   }));
 }
