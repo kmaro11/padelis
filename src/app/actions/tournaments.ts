@@ -43,7 +43,7 @@ export async function deleteTournamentAction(id: string) {
 
 export async function updateTournamentDetailsAction(
   tournamentId: string,
-  details: { name: string; date: string },
+  details: { name: string; date: string; courtNames: string[] | null },
 ) {
   await updateTournamentDetails(tournamentId, details);
   revalidatePath("/");

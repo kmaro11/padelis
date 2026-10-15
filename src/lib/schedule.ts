@@ -377,6 +377,7 @@ export function createTournament(input: {
   date: string;
   format: TournamentFormat;
   courts: number;
+  courtNames?: string[] | null;
   rated: boolean;
   teams: TeamDraft[];
 }): Tournament {
@@ -393,12 +394,29 @@ export function createTournament(input: {
     format: input.format,
     status: "draft",
     courts,
+    courtNames: normalizeCourtNames(input.courtNames, courts),
     rated: input.rated,
     teams,
     matches: groups
       ? generateGroupStage(teams, courts)
       : generateRoundRobin(teams, courts),
   };
+}
+
+/**
+ * Lygiai `courts` pavadinimų, apkarpytų; jei nė vienas neįvestas — null,
+ * kad ekrane liktų įprasti 1, 2, 3 numeriai.
+ */
+export function normalizeCourtNames(
+  names: string[] | null | undefined,
+  courts: number,
+): string[] | null {
+  if (!names) return null;
+  const clean = Array.from(
+    { length: courts },
+    (_, index) => (names[index] ?? "").trim().slice(0, 20),
+  );
+  return clean.some(Boolean) ? clean : null;
 }
 
 function maxRound(matches: Match[]): number {

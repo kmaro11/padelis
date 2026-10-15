@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { FORMAT_LABEL, type Tournament } from "@/lib/types";
 import { progress } from "@/lib/standings";
+import { courtLabels } from "@/lib/tournament-view";
 import { ProgressBar } from "../ui/ProgressBar";
 import { RatedBadge } from "./RatedBadge";
 
@@ -22,9 +23,8 @@ export function LiveTournamentCard({ tournament }: { tournament: Tournament }) {
           <RatedBadge rated={tournament.rated} tone="dark" />
         </span>
         <span className="text-xs text-on-ink-dim">
-          {tournament.courts > 1
-            ? `Court 1–${tournament.courts}`
-            : "Court 1"}
+          {tournament.courts > 1 ? "Courts " : "Court "}
+          {courtLabels(tournament).join(", ")}
         </span>
       </div>
 

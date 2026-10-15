@@ -52,6 +52,8 @@ export default async function TournamentPage({ params }: PageProps<"/tournament/
             tournamentId={tournament.id}
             name={tournament.name}
             date={tournament.date}
+            courts={tournament.courts}
+            courtNames={tournament.courtNames}
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">

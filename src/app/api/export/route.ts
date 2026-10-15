@@ -1,6 +1,10 @@
 import { listTournaments } from "@/db/queries";
 import { isPlayed } from "@/lib/standings";
-import { matchNumbers, teamName } from "@/lib/tournament-view";
+import {
+  courtLabel,
+  matchNumbers,
+  teamName,
+} from "@/lib/tournament-view";
 import { FORMAT_LABEL } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +38,7 @@ export async function GET() {
         `${numbers.get(match.id) ?? ""}`,
         match.label ?? match.stage,
         `${match.round}`,
-        match.court ? `${match.court}` : "",
+        courtLabel(tournament, match.court) ?? "",
         teamName(tournament.teams, match.homeTeamId) ?? "",
         isPlayed(match) ? `${match.score?.home}` : "",
         teamName(tournament.teams, match.awayTeamId) ?? "",

@@ -114,6 +114,8 @@ export interface Tournament {
   format: TournamentFormat;
   status: TournamentStatus;
   courts: number;
+  /** Tikri kortų pavadinimai; `court = 1` → `courtNames[0]`. */
+  courtNames: string[] | null;
   /** "Trečiadienio pasižaidimai su reitingais" */
   rated: boolean;
   teams: Team[];

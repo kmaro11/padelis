@@ -52,6 +52,11 @@ export const tournaments = pgTable(
     status: tournamentStatus("status").notNull().default("draft"),
     courts: smallint("courts").notNull().default(1),
     /**
+     * Tikri kortų pavadinimai ("10", "11", …) pagal `matches.court` eilę:
+     * `court = 1` → `courtNames[0]`. null ar tuščias — rodomas pats numeris.
+     */
+    courtNames: text("court_names").array(),
+    /**
      * "Trečiadienio pasižaidimai su reitingais" — ar turnyro rezultatai
      * skaičiuojami į žaidėjų reitingą. Seni turnyrai lieka `false`.
      */

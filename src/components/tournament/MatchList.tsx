@@ -11,6 +11,7 @@ import { isPlayed } from "@/lib/standings";
 import {
   activeRoundIndex,
   activeTrackKey,
+  courtLabel,
   groupByRound,
   groupTracks,
   matchNumbers,
@@ -422,6 +423,7 @@ function MatchCard({
         number={number}
         home={home}
         away={away}
+        court={courtLabel(tournament, match.court)}
         onDone={onCancelEdit}
         editing={editing}
       />
@@ -475,6 +477,7 @@ function ScoreEntryCard({
   number,
   home,
   away,
+  court,
   onDone,
   editing,
 }: {
@@ -483,6 +486,7 @@ function ScoreEntryCard({
   number: number;
   home: string;
   away: string;
+  court: string | null;
   onDone: () => void;
   editing: boolean;
 }) {
@@ -520,7 +524,7 @@ function ScoreEntryCard({
       <header className="mb-3.5 flex items-center justify-between">
         <span className="text-2xs font-semibold uppercase leading-none tracking-badge text-gold">
           {match.label ?? `Match ${number}`}
-          {match.court ? ` · Court ${match.court}` : ""}
+          {court ? ` · Court ${court}` : ""}
         </span>
         {editing ? (
           <span className="text-[11.5px] text-dim">Editing</span>

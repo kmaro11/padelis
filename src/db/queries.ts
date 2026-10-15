@@ -1,6 +1,15 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  ne,
+} from "drizzle-orm";
 
 import { db } from "./index";
 import { toPlayer, toTournament } from "./mappers";
@@ -23,7 +32,11 @@ import {
   type Pair,
   type RatedTournament,
 } from "@/lib/rating";
-import { advanceFormat, createTournament } from "@/lib/schedule";
+import {
+  advanceFormat,
+  createTournament,
+  normalizeCourtNames,
+} from "@/lib/schedule";
 import { playerNames } from "@/lib/tournament-view";
 import { isPlayed } from "@/lib/standings";
 import type {
@@ -196,6 +209,21 @@ export async function countPaid(tournamentId: string): Promise<number> {
   return row?.paid ?? 0;
 }
 
+/**
+ * Kortai dažniausiai tie patys kas savaitę — kuriant naują turnyrą
+ * pasiūlom paskutinį kartą įvestus pavadinimus.
+ */
+export async function latestCourtNames(): Promise<string[] | null> {
+  const [row] = await db
+    .select({ courtNames: tournaments.courtNames })
+    .from(tournaments)
+    .where(isNotNull(tournaments.courtNames))
+    .orderBy(desc(tournaments.createdAt))
+    .limit(1);
+
+  return row?.courtNames ?? null;
+}
+
 /* ----------------------------------------------------------------- writes */
 
 export interface CreateTournamentInput {
@@ -203,6 +231,7 @@ export interface CreateTournamentInput {
   date: string;
   format: TournamentFormat;
   courts: number;
+  courtNames: string[] | null;
   rated: boolean;
   teams: TeamDraft[];
 }
@@ -225,6 +254,7 @@ export async function insertTournament(
         format: draft.format,
         status: draft.status,
         courts: draft.courts,
+        courtNames: draft.courtNames,
         rated: draft.rated,
       })
       .returning({ id: tournaments.id });
@@ -571,7 +601,7 @@ export async function listRatings(): Promise<RatingRow[]> {
  */
 export async function updateTournamentDetails(
   id: string,
-  details: { name: string; date: string },
+  details: { name: string; date: string; courtNames: string[] | null },
 ): Promise<void> {
   const name = details.name.trim().slice(0, 80);
   if (name.length === 0) throw new Error("Name required");
@@ -586,7 +616,11 @@ export async function updateTournamentDetails(
 
   await db
     .update(tournaments)
-    .set({ name, date: details.date })
+    .set({
+      name,
+      date: details.date,
+      courtNames: normalizeCourtNames(details.courtNames, before.courts),
+    })
     .where(eq(tournaments.id, id));
 
   if (

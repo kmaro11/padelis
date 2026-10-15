@@ -18,7 +18,12 @@ import {
   type TournamentFormat,
 } from "@/lib/types";
 import { Calendar } from "./Calendar";
-import { FormatCards, RatedCheckbox, TeamCountGrid } from "./steps";
+import {
+  CourtPicker,
+  FormatCards,
+  RatedCheckbox,
+  TeamCountGrid,
+} from "./steps";
 import { TeamBuilder, type TeamSlots } from "./TeamBuilder";
 
 const STEPS = ["Date", "Teams", "Names", "Format"] as const;
@@ -27,6 +32,8 @@ export interface CreateDefaults {
   defaultTeams: number;
   defaultFormat: TournamentFormat;
   courts: number;
+  /** paskutinio turnyro kortų pavadinimai — dažniausiai tie patys */
+  courtNames: string[] | null;
 }
 
 export function CreateFlow({
@@ -50,6 +57,12 @@ export function CreateFlow({
     defaults.defaultFormat,
   );
   const [rated, setRated] = useState(false);
+  const [courts, setCourts] = useState(
+    defaults.courtNames?.length ?? defaults.courts,
+  );
+  const [courtNames, setCourtNames] = useState<string[]>(
+    defaults.courtNames ?? [],
+  );
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,7 +90,8 @@ export function CreateFlow({
           name: suggestName(date as string),
           date: date as string,
           format,
-          courts: defaults.courts,
+          courts,
+          courtNames: courtNames.slice(0, courts),
           rated,
           teams: toDrafts(teams, players),
         });
@@ -172,6 +186,12 @@ export function CreateFlow({
             value={format}
             onChange={setFormat}
             teamCount={teamCount}
+          />
+          <CourtPicker
+            count={courts}
+            names={courtNames}
+            onCountChange={setCourts}
+            onNamesChange={setCourtNames}
           />
           <RatedCheckbox checked={rated} onChange={setRated} />
         </>

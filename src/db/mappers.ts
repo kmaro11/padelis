@@ -43,6 +43,7 @@ export function toTournament(
     format: row.format,
     status: row.status,
     courts: row.courts,
+    courtNames: row.courtNames ?? null,
     rated: row.rated,
     teams: teamRows.map(toTeam),
     matches: matchRows.map(toMatch),

@@ -17,6 +17,25 @@ export function teamName(teams: Team[], id: string | null): string | null {
   return teams.find((team) => team.id === id)?.name ?? null;
 }
 
+/** Kortas ekrane — tikras pavadinimas ("12"), jei įvestas, kitaip numeris. */
+export function courtLabel(
+  tournament: Pick<Tournament, "courtNames">,
+  court: number | undefined,
+): string | null {
+  if (!court) return null;
+  return tournament.courtNames?.[court - 1] || `${court}`;
+}
+
+/** Visi turnyro kortai: ["10", "11", "12", "13"]. */
+export function courtLabels(
+  tournament: Pick<Tournament, "courts" | "courtNames">,
+): string[] {
+  return Array.from(
+    { length: tournament.courts },
+    (_, index) => courtLabel(tournament, index + 1) as string,
+  );
+}
+
 /** Pirmos nesužaistos rungtynės su žinomomis komandomis. */
 export function nextMatch(tournament: Tournament): Match | null {
   return (

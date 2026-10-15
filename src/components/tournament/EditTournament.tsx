@@ -5,31 +5,43 @@ import { Pencil } from "lucide-react";
 
 import { updateTournamentDetailsAction } from "@/app/actions/tournaments";
 import { Calendar } from "@/components/create/Calendar";
+import { CourtNameInputs } from "@/components/create/steps";
 
 export function EditTournament({
   tournamentId,
   name: initialName,
   date: initialDate,
+  courts,
+  courtNames: initialCourtNames,
 }: {
   tournamentId: string;
   name: string;
   date: string;
+  /** skaičius fiksuotas — kortai jau priskirti mačams */
+  courts: number;
+  courtNames: string[] | null;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [date, setDate] = useState(initialDate);
+  const [courtNames, setCourtNames] = useState(initialCourtNames ?? []);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const close = () => {
     setName(initialName);
     setDate(initialDate);
+    setCourtNames(initialCourtNames ?? []);
     setError(null);
     setOpen(false);
   };
 
   const clean = name.trim();
-  const changed = clean !== initialName || date !== initialDate;
+  const courtsChanged =
+    courtNames.map((value) => value.trim()).join("\n") !==
+    (initialCourtNames ?? []).join("\n");
+  const changed =
+    clean !== initialName || date !== initialDate || courtsChanged;
 
   const save = () => {
     if (clean.length === 0 || !changed) return close();
@@ -40,6 +52,7 @@ export function EditTournament({
         await updateTournamentDetailsAction(tournamentId, {
           name: clean,
           date,
+          courtNames,
         });
         setOpen(false);
       } catch {
@@ -83,6 +96,11 @@ export function EditTournament({
               className="rounded-field bg-fill px-3 py-2.5 text-base outline-none"
             />
             <Calendar value={date} onChange={setDate} allowPast />
+            <CourtNameInputs
+              count={courts}
+              names={courtNames}
+              onChange={setCourtNames}
+            />
             {error ? (
               <p className="text-center text-sm text-red-600">{error}</p>
             ) : null}
