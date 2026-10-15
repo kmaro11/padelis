@@ -1,4 +1,10 @@
-import { isPlayed, progress, roundRobinComplete } from "./standings";
+import { parseDate } from "./date";
+import {
+  computeFinalPlacings,
+  isPlayed,
+  progress,
+  roundRobinComplete,
+} from "./standings";
 import {
   GROUPS,
   type GroupKey,
@@ -34,6 +40,41 @@ export function courtLabels(
     { length: tournament.courts },
     (_, index) => courtLabel(tournament, index + 1) as string,
   );
+}
+
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+/**
+ * Tekstas FB grupei po turnyro:
+ *
+ *   🏆 Trečiadienio nužievinimas · spalio 14 d.
+ *
+ *   🥇 Jonas / Petras
+ *   🥈 …
+ *   4. …
+ */
+export function announcementText(tournament: Tournament): string {
+  const { placings } = computeFinalPlacings(
+    tournament.teams,
+    tournament.matches,
+  );
+  const date = new Intl.DateTimeFormat("lt-LT", {
+    month: "long",
+    day: "numeric",
+  }).format(parseDate(tournament.date));
+
+  const lines = placings.map(
+    (placing) =>
+      `${MEDALS[placing.position - 1] ?? `${placing.position}.`} ${placing.team.name}`,
+  );
+
+  return [
+    `🏆 ${tournament.name} · ${date}`,
+    "",
+    ...lines,
+    "",
+    "Ačiū visiems už žaidimą! 🎾",
+  ].join("\n");
 }
 
 /** Pirmos nesužaistos rungtynės su žinomomis komandomis. */

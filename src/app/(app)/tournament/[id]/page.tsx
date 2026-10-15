@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Screen } from "@/components/layout/AppShell";
+import { AnnounceWinners } from "@/components/tournament/AnnounceWinners";
 import { DeleteTournament } from "@/components/tournament/DeleteTournament";
 import { EditTournament } from "@/components/tournament/EditTournament";
 import { RatedBadge } from "@/components/tournament/RatedBadge";
@@ -20,7 +21,11 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { countPaid, getTournament } from "@/db/queries";
 import { formatLongDate, parseDate } from "@/lib/date";
-import { nextMatch, summarize } from "@/lib/tournament-view";
+import {
+  announcementText,
+  nextMatch,
+  summarize,
+} from "@/lib/tournament-view";
 import { FORMAT_LABEL } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +143,10 @@ export default async function TournamentPage({ params }: PageProps<"/tournament/
         >
           Enter next result
         </ButtonLink>
+      ) : null}
+
+      {tournament.status === "completed" ? (
+        <AnnounceWinners text={announcementText(tournament)} />
       ) : null}
 
       <RatedToggle tournamentId={tournament.id} rated={tournament.rated} />
