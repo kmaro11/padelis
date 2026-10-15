@@ -565,6 +565,19 @@ export async function listRatings(): Promise<RatingRow[]> {
   }));
 }
 
+/**
+ * Pamiršus uždėti varnelę kuriant — galima pataisyti ir vėliau. Reitingai
+ * perleidžiami iš naujo, tad užbaigtas turnyras iškart įsiskaičiuoja (ar
+ * išsiskaičiuoja) į žaidėjų reitingą.
+ */
+export async function setTournamentRated(
+  id: string,
+  rated: boolean,
+): Promise<void> {
+  await db.update(tournaments).set({ rated }).where(eq(tournaments.id, id));
+  await recomputeRatings();
+}
+
 export async function deleteTournament(id: string): Promise<void> {
   await db.delete(tournaments).where(eq(tournaments.id, id));
   await recomputeRatings();

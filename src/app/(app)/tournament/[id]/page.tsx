@@ -12,6 +12,7 @@ import {
 import { Screen } from "@/components/layout/AppShell";
 import { DeleteTournament } from "@/components/tournament/DeleteTournament";
 import { RatedBadge } from "@/components/tournament/RatedBadge";
+import { RatedToggle } from "@/components/tournament/RatedToggle";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -128,6 +129,8 @@ export default async function TournamentPage({ params }: PageProps<"/tournament/
           Enter next result
         </ButtonLink>
       ) : null}
+
+      <RatedToggle tournamentId={tournament.id} rated={tournament.rated} />
 
       <div className={next ? "pb-2" : "mt-auto pb-2"}>
         <DeleteTournament
